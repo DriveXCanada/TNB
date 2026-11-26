@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SERVER
+}
+
+enum JobStatus {
+  PENDING
+  IN_PROGRESS
+  SERVED
+  NON_SERVICE
+  CANCELLED
+}
+
+enum Priority {
+  ROUTINE
+  RUSH
+  SAME_DAY
+}
+
+enum AttemptOutcome {
+  PERSONAL
+  SUBSTITUTED
+  CORPORATE
+  POSTED
+  NOT_HOME
+  REFUSED
+  BAD_ADDRESS
+  MOVED
+  EVADING
+  OTHER
+}
+
+enum FileKind {
+  PHOTO
+  DOCUMENT
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  phone        String?
+  passwordHash String
+  role         Role      @default(SERVER)
+  active       Boolean   @default(true)
+  city         String?
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  jobs         Job[]     @relation("AssignedServer")
+  attempts     Attempt[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  jobs        Job[]
+}
+
+model Job {
+  id                   String     @id @default(cuid())
+  number               Int        @unique @default(autoincrement())
+  status               JobStatus  @default(PENDING)
+  priority             Priority   @default(ROUTINE)
+  clientId             String?
+  client               Client?    @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientReference      String?
+  notifyEmails         String?
+  courtName            String?
+  courtFileNumber      String?
+  caseTitle            String?
+  documentsServed      String?
+  recipientName        String
+  recipientType        String     @default("INDIVIDUAL")
+  recipientDescription String?
+  address              String
+  altAddresses         String?
+  instructions         String?
+  dueDate              DateTime?
+  fee                  Decimal?   @db.Decimal(10, 2)
+  serverId             String?
+  server               User?      @relation("AssignedServer", fields: [serverId], references: [id], onDelete: SetNull)
+  trackingToken        String     @unique
+  trackingEnabled      Boolean    @default(true)
+  servedAt             DateTime?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  attempts             Attempt[]
+  files                File[]
+}
+
+model Attempt {
+  id              String         @id @default(cuid())
+  jobId           String
+  job             Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  serverId        String?
+  server          User?          @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  attemptedAt     DateTime
+  address         String
+  outcome         AttemptOutcome
+  personServed    String?
+  relationship    String?
+  personDescription String?
+  notes           String?
+  latitude        Float?
+  longitude       Float?
+  gpsAccuracy     Float?
+  shareWithClient Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  files           File[]
+}
+
+model File {
+  id        String   @id @default(cuid())
+  kind      FileKind
+  jobId     String?
+  job       Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  attemptId String?
+  attempt   Attempt? @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  filename  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
