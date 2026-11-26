@@ -7,8 +7,8 @@ import JobForm from "@/components/JobForm";
 export default async function NewJobPage() {
   await requireAdmin();
   const [clients, servers, settings] = await Promise.all([
-    prisma.client.findMany({ orderBy: { name: "asc" } }),
-    prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, contactName: true, email: true, phone: true, address: true } }),
+    prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     getSettings(),
   ]);
   return (

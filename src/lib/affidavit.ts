@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { Attempt, Job, User, Client } from "@prisma/client";
 import type { Settings } from "./settings";
+import { styleOfCause } from "./jobForm";
 import { fmtDateTime, fmtLong, isServedOutcome, OUTCOME_LABEL } from "./labels";
 
 type JobFull = Job & { attempts: (Attempt & { server: User | null })[]; client: Client | null; server: User | null };
@@ -90,7 +91,8 @@ export async function buildAffidavit(job: JobFull, settings: Settings, attemptId
 
   if (job.courtFileNumber) w.text(`Court File No. ${job.courtFileNumber}`, { size: 11, gap: 14 });
   w.text((job.courtName || settings.defaultCourt || "").toUpperCase(), { bold: true, center: true, size: 13, gap: 12 });
-  if (job.caseTitle) w.text(job.caseTitle, { center: true, gap: 18 });
+  const title = styleOfCause(job);
+  if (title) w.text(title, { center: true, gap: 18 });
   w.text("AFFIDAVIT OF SERVICE", { bold: true, center: true, size: 14, gap: 18 });
 
   w.text(
@@ -164,8 +166,16 @@ async function buildNovaScotia(job: JobFull, settings: Settings, attemptId?: str
 
   w.text(job.courtFileNumber || "20__ Hfx No. __________", { right: true, gap: 18 });
   w.text(job.courtName || settings.defaultCourt || "Supreme Court of Nova Scotia", { bold: true, center: true, size: 13, gap: 14 });
-  w.text("Between:", { gap: 6 });
-  w.text(job.caseTitle || blank, { center: true, gap: 20 });
+  w.text("Between:", { gap: 8 });
+  if (job.plaintiff || job.defendant) {
+    w.text(job.plaintiff || blank, { center: true, bold: true, gap: 0 });
+    w.text("Plaintiff", { right: true, gap: 6 });
+    w.text("and", { center: true, gap: 6 });
+    w.text(job.defendant || blank, { center: true, bold: true, gap: 0 });
+    w.text("Defendant", { right: true, gap: 20 });
+  } else {
+    w.text(job.caseTitle || blank, { center: true, gap: 20 });
+  }
   w.text("Affidavit of Service", { bold: true, center: true, size: 14, gap: 18 });
   w.text(`I, ${name}, of ${city}, Nova Scotia, ${settings.oathPhrase}:`, { gap: 12 });
 

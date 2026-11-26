@@ -1,5 +1,12 @@
-import type { Client, Job, User } from "@prisma/client";
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import { PRIORITY_LABEL } from "@/lib/labels";
+import { NS_COUNTIES, type JobFormValues } from "@/lib/jobForm";
+
+type ClientOpt = { id: string; name: string; contactName: string | null; email: string | null; phone: string | null; address: string | null };
+type ServerOpt = { id: string; name: string };
 
 export default function JobForm({
   action,
@@ -9,69 +16,121 @@ export default function JobForm({
   defaultCourt,
 }: {
   action: (fd: FormData) => Promise<void>;
-  job?: Job;
-  clients: Client[];
-  servers: User[];
+  job?: JobFormValues;
+  clients: ClientOpt[];
+  servers: ServerOpt[];
   defaultCourt: string;
 }) {
-  const due = job?.dueDate ? job.dueDate.toISOString().slice(0, 10) : "";
+  const v = (k: string) => job?.[k] ?? "";
+  const [clientId, setClientId] = useState(v("clientId"));
+  const [plaintiff, setPlaintiff] = useState(v("plaintiff"));
+  const [defendant, setDefendant] = useState(v("defendant"));
+  const [recipient, setRecipient] = useState(v("recipientName"));
+  // Autofill keeps following its source until the user types in the field themselves.
+  const [plaintiffTouched, setPlaintiffTouched] = useState(Boolean(job?.plaintiff));
+  const [recipientTouched, setRecipientTouched] = useState(Boolean(job?.recipientName));
+  const client = clients.find((c) => c.id === clientId);
+
+  const pickClient = (id: string) => {
+    setClientId(id);
+    const c = clients.find((x) => x.id === id);
+    if (!plaintiffTouched) setPlaintiff(c?.name ?? "");
+  };
+  const changeDefendant = (val: string) => {
+    setDefendant(val);
+    if (!recipientTouched) setRecipient(val);
+  };
+
   return (
     <form action={action} className="space-y-6">
       <section className="card grid gap-4 sm:grid-cols-2">
-        <h2 className="h2 sm:col-span-2">Recipient (party to be served)</h2>
-        <div><label className="label">Name *</label><input className="input" name="recipientName" required defaultValue={job?.recipientName} /></div>
+        <h2 className="h2 sm:col-span-2">Client</h2>
+        <div>
+          <div className="flex items-baseline justify-between">
+            <label className="label">Client</label>
+            <Link href="/clients/new" target="_blank" className="text-xs text-indigo-700">+ New client</Link>
+          </div>
+          <select className="input" name="clientId" value={clientId} onChange={(e) => pickClient(e.target.value)}>
+            <option value="">— Select client —</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div><label className="label">Client job number</label><input className="input" name="clientReference" defaultValue={v("clientReference")} /></div>
+        {client && (
+          <div className="rounded-lg bg-slate-50 p-3 text-sm sm:col-span-2">
+            <div className="font-medium">{client.name}</div>
+            {client.contactName && <div>{client.contactName}</div>}
+            <div className="text-slate-600">
+              {[client.email, client.phone].filter(Boolean).join(" · ") || "No email or phone on file"}
+            </div>
+            {client.address && <div className="whitespace-pre-wrap text-slate-600">{client.address}</div>}
+          </div>
+        )}
+        <div className="sm:col-span-2">
+          <label className="label">Extra emails to notify on each attempt (comma-separated)</label>
+          <input className="input" name="notifyEmails" defaultValue={v("notifyEmails")} placeholder="clerk@lawfirm.ca" />
+        </div>
+      </section>
+
+      <section className="card grid gap-4 sm:grid-cols-2">
+        <h2 className="h2 sm:col-span-2">Court case</h2>
+        <div><label className="label">Court case number</label><input className="input" name="courtFileNumber" defaultValue={v("courtFileNumber")} placeholder="Hfx No. 512345" /></div>
+        <div><label className="label">Court</label><input className="input" name="courtName" defaultValue={job ? v("courtName") : defaultCourt} placeholder="Supreme Court of Nova Scotia" /></div>
+        <div>
+          <label className="label">Plaintiff</label>
+          <input className="input" name="plaintiff" value={plaintiff} onChange={(e) => { setPlaintiff(e.target.value); setPlaintiffTouched(true); }} placeholder="Filled in from the client" />
+        </div>
+        <div><label className="label">Defendant</label><input className="input" name="defendant" value={defendant} onChange={(e) => changeDefendant(e.target.value)} /></div>
+        <div><label className="label">Date filed</label><input className="input" type="date" name="dateFiled" defaultValue={v("dateFiled")} /></div>
+        <div><label className="label">Court date</label><input className="input" type="date" name="courtDate" defaultValue={v("courtDate")} /></div>
+        <div>
+          <label className="label">Court county</label>
+          <input className="input" name="courtCounty" list="ns-counties" defaultValue={v("courtCounty")} placeholder="Halifax" />
+          <datalist id="ns-counties">{NS_COUNTIES.map((c) => <option key={c} value={c} />)}</datalist>
+        </div>
+        <div className="sm:col-span-2"><label className="label">Documents to be served</label><textarea className="input" rows={2} name="documentsServed" defaultValue={v("documentsServed")} placeholder="Notice of Action and Statement of Claim" /></div>
+        <div className="sm:col-span-2"><label className="label">Upload documents (PDF, images)</label><input className="input" type="file" name="documents" multiple /></div>
+      </section>
+
+      <section className="card grid gap-4 sm:grid-cols-2">
+        <h2 className="h2 sm:col-span-2">Party to serve</h2>
+        <div>
+          <label className="label">Name *</label>
+          <input className="input" name="recipientName" required value={recipient} onChange={(e) => { setRecipient(e.target.value); setRecipientTouched(true); }} placeholder="Filled in from the defendant" />
+        </div>
         <div>
           <label className="label">Type</label>
-          <select className="input" name="recipientType" defaultValue={job?.recipientType ?? "INDIVIDUAL"}>
+          <select className="input" name="recipientType" defaultValue={v("recipientType") || "INDIVIDUAL"}>
             <option value="INDIVIDUAL">Individual</option>
             <option value="CORPORATION">Corporation / business</option>
             <option value="GOVERNMENT">Government / agency</option>
           </select>
         </div>
-        <div className="sm:col-span-2"><label className="label">Service address *</label><input className="input" name="address" required defaultValue={job?.address} placeholder="1234 Barrington St, Halifax, NS B3J 1Y9" /></div>
-        <div className="sm:col-span-2"><label className="label">Alternate addresses (one per line)</label><textarea className="input" rows={2} name="altAddresses" defaultValue={job?.altAddresses ?? ""} /></div>
-        <div className="sm:col-span-2"><label className="label">Description (age, appearance, vehicle…)</label><textarea className="input" rows={2} name="recipientDescription" defaultValue={job?.recipientDescription ?? ""} /></div>
+        <div><label className="label">Email</label><input className="input" type="email" name="recipientEmail" defaultValue={v("recipientEmail")} /></div>
+        <div><label className="label">Phone</label><input className="input" type="tel" name="recipientPhone" defaultValue={v("recipientPhone")} /></div>
+        <div className="sm:col-span-2"><label className="label">Service address *</label><input className="input" name="address" required defaultValue={v("address")} placeholder="1234 Barrington St, Halifax, NS B3J 1Y9" /></div>
+        <div className="sm:col-span-2"><label className="label">Alternate addresses (one per line)</label><textarea className="input" rows={2} name="altAddresses" defaultValue={v("altAddresses")} /></div>
+        <div className="sm:col-span-2"><label className="label">Description (age, appearance, vehicle…)</label><textarea className="input" rows={2} name="recipientDescription" defaultValue={v("recipientDescription")} /></div>
       </section>
 
       <section className="card grid gap-4 sm:grid-cols-2">
-        <h2 className="h2 sm:col-span-2">Court &amp; documents</h2>
-        <div><label className="label">Court</label><input className="input" name="courtName" defaultValue={job?.courtName ?? defaultCourt} placeholder="Supreme Court of Nova Scotia" /></div>
-        <div><label className="label">Court file number</label><input className="input" name="courtFileNumber" defaultValue={job?.courtFileNumber ?? ""} placeholder="Hfx No. 512345" /></div>
-        <div className="sm:col-span-2"><label className="label">Title of proceeding</label><input className="input" name="caseTitle" defaultValue={job?.caseTitle ?? ""} placeholder="JANE DOE, Plaintiff – and – JOHN SMITH, Defendant" /></div>
-        <div className="sm:col-span-2"><label className="label">Documents to be served</label><textarea className="input" rows={2} name="documentsServed" defaultValue={job?.documentsServed ?? ""} placeholder="Notice of Action and Statement of Claim" /></div>
-        <div className="sm:col-span-2"><label className="label">Upload documents (PDF, images)</label><input className="input" type="file" name="documents" multiple /></div>
-      </section>
-
-      <section className="card grid gap-4 sm:grid-cols-2">
-        <h2 className="h2 sm:col-span-2">Client &amp; assignment</h2>
+        <h2 className="h2 sm:col-span-2">Assignment</h2>
         <div>
-          <label className="label">Client</label>
-          <select className="input" name="clientId" defaultValue={job?.clientId ?? ""}>
-            <option value="">— None —</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-        <div><label className="label">Client reference / file #</label><input className="input" name="clientReference" defaultValue={job?.clientReference ?? ""} /></div>
-        <div className="sm:col-span-2">
-          <label className="label">Extra emails to notify on each attempt (comma-separated)</label>
-          <input className="input" name="notifyEmails" defaultValue={job?.notifyEmails ?? ""} placeholder="clerk@lawfirm.ca" />
-        </div>
-        <div>
-          <label className="label">Assigned server</label>
-          <select className="input" name="serverId" defaultValue={job?.serverId ?? ""}>
+          <label className="label">Process server</label>
+          <select className="input" name="serverId" defaultValue={v("serverId")}>
             <option value="">— Unassigned —</option>
             {servers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
+        <div><label className="label">Attempt due date</label><input className="input" type="date" name="dueDate" defaultValue={v("dueDate")} /></div>
         <div>
           <label className="label">Priority</label>
-          <select className="input" name="priority" defaultValue={job?.priority ?? "ROUTINE"}>
-            {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <select className="input" name="priority" defaultValue={v("priority") || "ROUTINE"}>
+            {Object.entries(PRIORITY_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
         </div>
-        <div><label className="label">Due date</label><input className="input" type="date" name="dueDate" defaultValue={due} /></div>
-        <div><label className="label">Fee (CAD)</label><input className="input" type="number" step="0.01" min="0" name="fee" defaultValue={job?.fee?.toString() ?? ""} /></div>
-        <div className="sm:col-span-2"><label className="label">Instructions for server</label><textarea className="input" rows={3} name="instructions" defaultValue={job?.instructions ?? ""} /></div>
+        <div><label className="label">Fee (reference)</label><input className="input" type="number" step="0.01" min="0" name="fee" defaultValue={v("fee")} /></div>
+        <div className="sm:col-span-2"><label className="label">Instructions for server</label><textarea className="input" rows={3} name="instructions" defaultValue={v("instructions")} /></div>
       </section>
 
       <div className="flex justify-end gap-2">

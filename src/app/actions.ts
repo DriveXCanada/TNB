@@ -68,6 +68,9 @@ export async function logoutAction() {
 
 /* ---------- jobs ---------- */
 
+/** Date-only fields are stored at noon UTC so they show as the same calendar day in any Canadian timezone. */
+const day = (v: string | null) => (v ? new Date(`${v}T12:00:00Z`) : null);
+
 function jobData(fd: FormData) {
   const fee = str(fd, "fee");
   const due = str(fd, "dueDate");
@@ -82,7 +85,13 @@ function jobData(fd: FormData) {
     notifyEmails: str(fd, "notifyEmails"),
     courtName: str(fd, "courtName"),
     courtFileNumber: str(fd, "courtFileNumber"),
-    caseTitle: str(fd, "caseTitle"),
+    courtCounty: str(fd, "courtCounty"),
+    plaintiff: str(fd, "plaintiff"),
+    defendant: str(fd, "defendant"),
+    dateFiled: day(str(fd, "dateFiled")),
+    courtDate: day(str(fd, "courtDate")),
+    recipientEmail: str(fd, "recipientEmail"),
+    recipientPhone: str(fd, "recipientPhone"),
     documentsServed: str(fd, "documentsServed"),
     instructions: str(fd, "instructions"),
     priority: (str(fd, "priority") ?? "ROUTINE") as Priority,

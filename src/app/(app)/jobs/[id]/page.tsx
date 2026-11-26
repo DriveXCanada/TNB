@@ -68,17 +68,23 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           <section className="card">
             <h2 className="h2 mb-2">Details</h2>
             <dl className="divide-y divide-slate-100">
+              {row("Client", job.client && <>{job.client.name}{(job.client.contactName || job.client.email || job.client.phone) && <span className="block text-slate-500">{[job.client.contactName, job.client.email, job.client.phone].filter(Boolean).join(" · ")}</span>}</>)}
+              {row("Client job no.", job.clientReference)}
+              {row("Court case no.", job.courtFileNumber)}
+              {row("Plaintiff", job.plaintiff)}
+              {row("Defendant", job.defendant)}
+              {row("Proceeding", !job.plaintiff && !job.defendant ? job.caseTitle : null)}
+              {row("Court", [job.courtName, job.courtCounty && `${job.courtCounty} County`].filter(Boolean).join(", "))}
+              {row("Date filed", fmtDate(job.dateFiled))}
+              {row("Court date", fmtDate(job.courtDate))}
+              {row("Documents", job.documentsServed)}
+              {row("Party to serve", `${job.recipientName} (${job.recipientType.toLowerCase()})`)}
+              {row("Email", job.recipientEmail && <a className="text-indigo-700" href={`mailto:${job.recipientEmail}`}>{job.recipientEmail}</a>)}
+              {row("Phone", job.recipientPhone && <a className="text-indigo-700" href={`tel:${job.recipientPhone}`}>{job.recipientPhone}</a>)}
               {row("Service address", job.address)}
               {row("Alternate addresses", job.altAddresses)}
-              {row("Recipient type", job.recipientType.toLowerCase())}
               {row("Description", job.recipientDescription)}
-              {row("Court", job.courtName)}
-              {row("Court file no.", job.courtFileNumber)}
-              {row("Proceeding", job.caseTitle)}
-              {row("Documents", job.documentsServed)}
-              {row("Client", job.client?.name)}
-              {row("Client ref.", job.clientReference)}
-              {row("Due", fmtDate(job.dueDate))}
+              {row("Attempt due", fmtDate(job.dueDate))}
               {row("Fee", job.fee ? `$${job.fee.toFixed(2)}` : null)}
               {row("Instructions", job.instructions)}
               {row("Served at", fmtDateTime(job.servedAt))}

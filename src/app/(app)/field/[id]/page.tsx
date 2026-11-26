@@ -38,6 +38,13 @@ export default async function FieldJobPage({ params, searchParams }: { params: P
             <a className="btn-secondary shrink-0" target="_blank" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`}>Navigate</a>
           </div>
         ))}
+        {(job.recipientPhone || job.recipientEmail) && (
+          <div className="flex flex-wrap gap-2">
+            {job.recipientPhone && <a className="btn-secondary" href={`tel:${job.recipientPhone}`}>📞 {job.recipientPhone}</a>}
+            {job.recipientEmail && <a className="btn-secondary" href={`mailto:${job.recipientEmail}`}>✉️ Email</a>}
+          </div>
+        )}
+        {job.courtDate && <p className="text-sm"><b>Court date:</b> {fmtDate(job.courtDate)}</p>}
         {job.recipientDescription && <p className="text-sm"><b>Description:</b> {job.recipientDescription}</p>}
         {job.instructions && <p className="rounded-md bg-amber-50 p-2 text-sm whitespace-pre-wrap"><b>Instructions:</b> {job.instructions}</p>}
         {job.documentsServed && <p className="text-sm"><b>Documents:</b> {job.documentsServed}</p>}

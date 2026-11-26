@@ -89,12 +89,19 @@ model Job {
   clientReference      String?
   notifyEmails         String?
   courtName            String?
+  courtCounty          String?
+  plaintiff            String?
+  defendant            String?
+  dateFiled            DateTime?
+  courtDate            DateTime?
   courtFileNumber      String?
   caseTitle            String?
   documentsServed      String?
   recipientName        String
   recipientType        String     @default("INDIVIDUAL")
   recipientDescription String?
+  recipientEmail       String?
+  recipientPhone       String?
   address              String
   altAddresses         String?
   instructions         String?

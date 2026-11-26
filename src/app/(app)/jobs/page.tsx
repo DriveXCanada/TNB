@@ -20,6 +20,8 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
       { recipientName: { contains: q, mode: "insensitive" } },
       { address: { contains: q, mode: "insensitive" } },
       { clientReference: { contains: q, mode: "insensitive" } },
+      { plaintiff: { contains: q, mode: "insensitive" } },
+      { defendant: { contains: q, mode: "insensitive" } },
       { courtFileNumber: { contains: q, mode: "insensitive" } },
       { client: { name: { contains: q, mode: "insensitive" } } },
       ...(Number.isInteger(n) && n > 0 ? [{ number: n }] : []),
@@ -42,7 +44,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         <Link href="/jobs/new" className="btn-primary">+ New job</Link>
       </div>
       <form className="card grid gap-3 sm:grid-cols-4">
-        <input className="input sm:col-span-2" name="q" placeholder="Search name, address, job #, file #, client…" defaultValue={sp.q} />
+        <input className="input sm:col-span-2" name="q" placeholder="Search name, plaintiff, defendant, address, job #, case #…" defaultValue={sp.q} />
         <select className="input" name="status" defaultValue={sp.status ?? ""}>
           <option value="">All statuses</option>
           <option value="open">Open (pending + in progress)</option>
