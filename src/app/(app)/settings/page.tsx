@@ -33,6 +33,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <div><label className="label">Default court</label><input className="input" name="defaultCourt" defaultValue={s.defaultCourt} placeholder="Court of King's Bench of Alberta" /></div>
           <div className="sm:col-span-2"><label className="label">Oath wording</label><input className="input" name="oathPhrase" defaultValue={s.oathPhrase} /></div>
           <div className="sm:col-span-2"><label className="label">Commissioner signature line</label><input className="input" name="commissionerTitle" defaultValue={s.commissionerTitle} /></div>
+          <div className="sm:col-span-2"><label className="label">Standard affidavit statement ({"{name}"} = server&apos;s name)</label><textarea className="input" rows={4} name="affidavitStatement" defaultValue={s.affidavitStatement} /></div>
+          <div className="sm:col-span-2"><label className="label">Notary block text</label><input className="input" name="notaryText" defaultValue={s.notaryText} /></div>
           <div className="sm:col-span-2"><label className="label">Footer text (optional)</label><textarea className="input" rows={2} name="affidavitFooter" defaultValue={s.affidavitFooter} /></div>
           <p className="muted sm:col-span-2">Check the generated wording against your province&apos;s rules of court and forms before you swear an affidavit.</p>
         </section>

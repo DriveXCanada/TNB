@@ -59,6 +59,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
         include: { server: true, files: { select: { id: true, filename: true, mimeType: true } } },
       },
       files: { where: { kind: "DOCUMENT" }, select: { id: true, filename: true } },
+      affidavits: { orderBy: { updatedAt: "desc" }, select: { id: true, kind: true, updatedAt: true, createdBy: { select: { name: true } } } },
     },
   });
   if (!job || !canAccessJob(user, job)) notFound();
@@ -68,7 +69,6 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   ]);
   const trackUrl = `${appUrl()}/track/${job.trackingToken}`;
   const n = job.attempts.length;
-  const servedAttempts = job.attempts.filter((a) => isServedOutcome(a.outcome));
   const addrs = jobAddresses(job);
 
   return (
@@ -223,15 +223,21 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             </ul>
           </Section>
 
-          <Section title="Affidavits" action={<a className="btn-primary py-1.5" href={`/api/jobs/${job.id}/affidavit`} target="_blank">New Affidavit</a>}>
-            {servedAttempts.length === 0 ? (
-              <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-600">No affidavits yet. They&apos;re generated from a served attempt.</p>
+          <Section title="Affidavits" action={<Link className="btn-primary py-1.5" href={`/jobs/${job.id}/affidavits/new`}>New Affidavit</Link>}>
+            {job.affidavits.length === 0 ? (
+              <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-600">No Affidavits</p>
             ) : (
               <ul className="space-y-1 text-sm">
-                {servedAttempts.map((a) => (
-                  <li key={a.id} className="flex justify-between gap-2 rounded-md bg-slate-50 p-2">
-                    <span>Affidavit of Service – {OUTCOME_LABEL[a.outcome]}, {fmtDate(a.attemptedAt)}</span>
-                    <a className="text-indigo-700 underline" target="_blank" href={`/api/jobs/${job.id}/affidavit?attempt=${a.id}`}>PDF</a>
+                {job.affidavits.map((af) => (
+                  <li key={af.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-50 p-2">
+                    <Link className="font-medium text-indigo-700" href={`/jobs/${job.id}/affidavits/${af.id}`}>
+                      {af.kind === "SERVICE" ? "Affidavit of Service" : "Affidavit of Non-Service"}
+                    </Link>
+                    <span className="flex items-center gap-3 text-xs text-slate-500">
+                      {fmtDateTime(af.updatedAt)}{af.createdBy && ` · ${af.createdBy.name}`}
+                      <a className="text-indigo-700 underline" href={`/api/affidavits/${af.id}?download=1`}>Download</a>
+                      <Link className="text-indigo-700 underline" href={`/jobs/${job.id}/affidavits/${af.id}/edit`}>Edit</Link>
+                    </span>
                   </li>
                 ))}
               </ul>

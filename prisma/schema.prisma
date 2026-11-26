@@ -59,6 +59,7 @@ model User {
   sessions     Session[]
   jobs         Job[]     @relation("AssignedServer")
   createdJobs  Job[]     @relation("CreatedBy")
+  affidavits   Affidavit[]
   attempts     Attempt[]
 }
 
@@ -122,6 +123,7 @@ model Job {
   updatedAt            DateTime   @updatedAt
   attempts             Attempt[]
   files                File[]
+  affidavits           Affidavit[]
 }
 
 model Attempt {
@@ -163,4 +165,18 @@ model File {
 model Setting {
   key   String @id
   value String
+}
+
+model Affidavit {
+  id          String   @id @default(cuid())
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  kind        String
+  template    String
+  data        Json
+  pdf         Bytes
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

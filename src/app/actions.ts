@@ -20,6 +20,9 @@ import { storeUploads } from "@/lib/files";
 import { saveSettings, DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
 import { isServedOutcome, jobNo, OUTCOME_LABEL, fmtDateTime } from "@/lib/labels";
 import { appUrl, sendMail } from "@/lib/mail";
+import { getSettings } from "@/lib/settings";
+import { defaultAffidavit, sanitizeAffidavit } from "@/lib/affidavitData";
+import { renderAffidavit } from "@/lib/affidavitPdf";
 
 const str = (fd: FormData, k: string) => {
   const v = fd.get(k);
@@ -380,4 +383,58 @@ export async function saveSettingsAction(fd: FormData) {
   await saveSettings(values);
   revalidatePath("/settings");
   redirect("/settings?saved=1");
+}
+
+/* ---------- affidavits ---------- */
+
+async function jobForAffidavit(jobId: string) {
+  return prisma.job.findUniqueOrThrow({
+    where: { id: jobId },
+    include: { client: true, server: true, attempts: { include: { server: true } } },
+  });
+}
+
+export async function saveAffidavitAction(jobId: string, affidavitId: string | null, fd: FormData) {
+  const user = await requireUser();
+  const job = await jobForAffidavit(jobId);
+  if (!canAccessJob(user, job)) throw new Error("Not allowed");
+  let raw: unknown = null;
+  try {
+    raw = JSON.parse(String(fd.get("data") ?? "null"));
+  } catch {}
+  const data = sanitizeAffidavit(raw, defaultAffidavit(job, await getSettings()));
+  const pdf = Buffer.from(await renderAffidavit(data));
+  const fields = { kind: data.kind, template: data.template, data, pdf };
+  let id = affidavitId;
+  if (id) {
+    const existing = await prisma.affidavit.findUniqueOrThrow({ where: { id } });
+    if (existing.jobId !== jobId) throw new Error("Not allowed");
+    await prisma.affidavit.update({ where: { id }, data: fields });
+  } else {
+    id = (await prisma.affidavit.create({ data: { ...fields, jobId, createdById: user.id } })).id;
+  }
+  redirect(fd.get("intent") === "share" ? `/jobs/${jobId}/affidavits/${id}/share` : `/jobs/${jobId}/affidavits/${id}?saved=1`);
+}
+
+export async function deleteAffidavitAction(id: string) {
+  await requireStaff();
+  const a = await prisma.affidavit.delete({ where: { id } });
+  redirect(`/jobs/${a.jobId}`);
+}
+
+export async function emailAffidavitAction(id: string, fd: FormData) {
+  const user = await requireUser();
+  const a = await prisma.affidavit.findUniqueOrThrow({ where: { id }, include: { job: true } });
+  if (!canAccessJob(user, a.job)) throw new Error("Not allowed");
+  const to = chosenRecipients(fd);
+  const title = a.kind === "SERVICE" ? "Affidavit of Service" : "Affidavit of Non-Service";
+  const message = str(fd, "message");
+  await sendMail(
+    to,
+    `${title}: ${a.job.recipientName} – ${jobNo(a.job.number)}`,
+    `${message ? `${message}\n\n` : ""}Please find attached the ${title.toLowerCase()} for ${a.job.recipientName}` +
+      `${a.job.clientReference ? ` (your job no. ${a.job.clientReference})` : ""}${a.job.courtFileNumber ? `, court case ${a.job.courtFileNumber}` : ""}.\n`,
+    [{ filename: `${title.replace(/ /g, "-")}-${jobNo(a.job.number)}.pdf`, content: Buffer.from(a.pdf), contentType: "application/pdf" }]
+  );
+  redirect(`/jobs/${a.jobId}/affidavits/${id}?emailed=${to.length}`);
 }

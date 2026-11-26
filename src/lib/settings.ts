@@ -10,6 +10,9 @@ export const DEFAULT_SETTINGS = {
   oathPhrase: "make oath and give evidence as follows",
   commissionerTitle: "Signature of authority",
   affidavitFooter: "",
+  affidavitStatement:
+    "I, {name}, being duly sworn, depose and say: I am over the age of 18 years and not a party to this action, and that within the boundaries of the Province where service was effected, I was authorized by law to make service of the documents and informed said person of the contents herein.",
+  notaryText: "Identity of signatory verified by government issued photo identification",
   sharePhotosWithClient: "false",
 };
 
