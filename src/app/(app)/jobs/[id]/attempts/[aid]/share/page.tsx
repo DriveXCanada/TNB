@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { canAccessJob, requireUser } from "@/lib/auth";
+import { canAccessJob, requirePerm } from "@/lib/auth";
 import { emailAttemptAction } from "@/app/actions";
 import { recipientOptions } from "@/lib/recipients";
 import { fmtDateTime, jobNo, OUTCOME_LABEL } from "@/lib/labels";
 import EmailShare from "@/components/EmailShare";
 
 export default async function ShareAttemptPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
-  const user = await requireUser();
+  const user = await requirePerm("emailSharing");
   const { id, aid } = await params;
   const a = await prisma.attempt.findUnique({ where: { id: aid }, include: { job: true, _count: { select: { files: true } } } });
   if (!a || a.jobId !== id || !canAccessJob(user, a.job)) notFound();

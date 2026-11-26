@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { canAccessJob, isStaff, requireUser } from "@/lib/auth";
+import { can, canAccessJob, requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { appUrl } from "@/lib/mail";
 import { jobAddresses } from "@/lib/jobAddresses";
@@ -45,7 +45,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default async function JobPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ logged?: string; emailed?: string }> }) {
   const user = await requireUser();
-  const staff = isStaff(user);
+  const staff = can(user, "manageJobs");
+  const seeClient = staff || can(user, "manageClients");
+  const canAttempt = can(user, "createAttempts");
+  const canShare = can(user, "emailSharing");
+  const canAffidavit = can(user, "createAffidavits");
   const { id } = await params;
   const sp = await searchParams;
   const job = await prisma.job.findUnique({
@@ -65,7 +69,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   if (!job || !canAccessJob(user, job)) notFound();
   const [settings, servers] = await Promise.all([
     getSettings(),
-    staff ? prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" } }) : [],
+    staff ? prisma.user.findMany({ where: { active: true, role: { not: "CONTACT" } }, orderBy: { name: "asc" } }) : [],
   ]);
   const trackUrl = `${appUrl()}/track/${job.trackingToken}`;
   const n = job.attempts.length;
@@ -103,10 +107,10 @@ export default async function JobPage({ params, searchParams }: { params: Promis
           <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Client</div>
           {job.client ? (
             <>
-              {staff ? <Link href={`/clients/${job.client.id}`} className="font-semibold underline decoration-slate-300">{job.client.name}</Link> : <div className="font-semibold">{job.client.name}</div>}
+              {can(user, "manageClients") ? <Link href={`/clients/${job.client.id}`} className="font-semibold underline decoration-slate-300">{job.client.name}</Link> : <div className="font-semibold">{job.client.name}</div>}
               {job.client.contactName && <div className="text-sm">{job.client.contactName}</div>}
-              {staff && job.client.email && <div className="text-sm text-slate-600">{job.client.email}</div>}
-              {staff && job.client.phone && <div className="text-sm text-slate-600">{job.client.phone}</div>}
+              {seeClient && job.client.email && <div className="text-sm text-slate-600">{job.client.email}</div>}
+              {seeClient && job.client.phone && <div className="text-sm text-slate-600">{job.client.phone}</div>}
             </>
           ) : <div className="muted">No client</div>}
           {job.clientReference && <div className="mt-1 text-sm">Job no. <b>{job.clientReference}</b></div>}
@@ -154,7 +158,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             action={
               <div className="flex gap-2">
                 <Link className="btn-secondary py-1.5" href={`/jobs/${job.id}/sheet`} target="_blank">Field Sheet</Link>
-                <Link className="btn-primary py-1.5" href={`/field/${job.id}/attempt`}>New Attempt</Link>
+                {canAttempt && <Link className="btn-primary py-1.5" href={`/field/${job.id}/attempt`}>New Attempt</Link>}
               </div>
             }
           >
@@ -162,7 +166,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             <ul className="divide-y divide-slate-100">
               {job.attempts.map((a) => {
                 const served = isServedOutcome(a.outcome);
-                const canEdit = staff || a.serverId === user.id;
+                const canEdit = staff || (canAttempt && a.serverId === user.id);
                 return (
                   <li key={a.id} className="py-2">
                     <details className="group">
@@ -179,7 +183,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                         </div>
                         <div className="text-sm">{a.address}</div>
                         <div className="text-right text-sm">
-                          <Link className="text-indigo-700 underline" href={`/jobs/${job.id}/attempts/${a.id}/share`}>Share</Link>
+                          {canShare && <Link className="text-indigo-700 underline" href={`/jobs/${job.id}/attempts/${a.id}/share`}>Share</Link>}
                           <div className="text-slate-600">{a.server?.name ?? "—"}</div>
                         </div>
                       </summary>
@@ -208,12 +212,8 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                         )}
                         <div className="flex flex-wrap gap-3 pt-1 text-xs">
                           <span className={a.shareWithClient ? "text-emerald-700" : "text-slate-500"}>{a.shareWithClient ? "Visible on client tracking page" : "Hidden from client tracking page"}</span>
-                          {staff && (
-                            <>
-                              <form action={toggleAttemptShareAction.bind(null, a.id, job.id)}><button className="text-indigo-700">{a.shareWithClient ? "Hide" : "Show"}</button></form>
-                              <form action={deleteAttemptAction.bind(null, a.id, job.id)}><ConfirmButton className="text-rose-600" message="Delete this attempt?">Delete</ConfirmButton></form>
-                            </>
-                          )}
+                          {staff && <form action={toggleAttemptShareAction.bind(null, a.id, job.id)}><button className="text-indigo-700">{a.shareWithClient ? "Hide" : "Show"}</button></form>}
+                          {can(user, "deleteAttempts") && <form action={deleteAttemptAction.bind(null, a.id, job.id)}><ConfirmButton className="text-rose-600" message="Delete this attempt?">Delete</ConfirmButton></form>}
                         </div>
                       </div>
                     </details>
@@ -223,7 +223,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             </ul>
           </Section>
 
-          <Section title="Affidavits" action={<Link className="btn-primary py-1.5" href={`/jobs/${job.id}/affidavits/new`}>New Affidavit</Link>}>
+          <Section title="Affidavits" action={canAffidavit && <Link className="btn-primary py-1.5" href={`/jobs/${job.id}/affidavits/new`}>New Affidavit</Link>}>
             {job.affidavits.length === 0 ? (
               <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-600">No Affidavits</p>
             ) : (
@@ -236,7 +236,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                     <span className="flex items-center gap-3 text-xs text-slate-500">
                       {fmtDateTime(af.updatedAt)}{af.createdBy && ` · ${af.createdBy.name}`}
                       <a className="text-indigo-700 underline" href={`/api/affidavits/${af.id}?download=1`}>Download</a>
-                      <Link className="text-indigo-700 underline" href={`/jobs/${job.id}/affidavits/${af.id}/edit`}>Edit</Link>
+                      {canAffidavit && <Link className="text-indigo-700 underline" href={`/jobs/${job.id}/affidavits/${af.id}/edit`}>Edit</Link>}
                     </span>
                   </li>
                 ))}

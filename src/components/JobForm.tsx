@@ -14,12 +14,14 @@ export default function JobForm({
   clients,
   servers,
   defaultCourt,
+  defaultServerId = "",
 }: {
   action: (fd: FormData) => Promise<void>;
   job?: JobFormValues;
   clients: ClientOpt[];
   servers: ServerOpt[];
   defaultCourt: string;
+  defaultServerId?: string;
 }) {
   const v = (k: string) => job?.[k] ?? "";
   const [clientId, setClientId] = useState(v("clientId"));
@@ -117,7 +119,7 @@ export default function JobForm({
         <h2 className="h2 sm:col-span-2">Assignment</h2>
         <div>
           <label className="label">Process server</label>
-          <select className="input" name="serverId" defaultValue={v("serverId")}>
+          <select className="input" name="serverId" defaultValue={job ? v("serverId") : defaultServerId}>
             <option value="">— Unassigned —</option>
             {servers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>

@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { requirePerm } from "@/lib/auth";
 import { deleteClientAction, saveClientAction } from "@/app/actions";
 import ConfirmButton from "@/components/ConfirmButton";
 
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireStaff();
+  await requirePerm("manageClients");
   const { id } = await params;
   const isNew = id === "new";
   const c = isNew ? null : await prisma.client.findUnique({ where: { id } });

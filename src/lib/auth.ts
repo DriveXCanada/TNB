@@ -5,6 +5,7 @@ import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 import type { User } from "@prisma/client";
+import { can, type Permission } from "./permissions";
 
 const COOKIE = "tnb_session";
 const SESSION_DAYS = 30;
@@ -43,7 +44,7 @@ export async function getCurrentUser(): Promise<User | null> {
   const id = jar.get(COOKIE)?.value;
   if (!id) return null;
   const session = await prisma.session.findUnique({ where: { id }, include: { user: true } });
-  if (!session || session.expiresAt < new Date() || !session.user.active) return null;
+  if (!session || session.expiresAt < new Date() || !session.user.active || session.user.role === "CONTACT") return null;
   return session.user;
 }
 
@@ -53,27 +54,21 @@ export async function requireUser() {
   return user;
 }
 
-/** Master account only: team, settings. */
-export async function requireAdmin() {
+/** Redirect away unless the user has this permission. */
+export async function requirePerm(perm: Permission) {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect(isStaff(user) ? "/" : "/jobs");
+  if (!can(user, perm)) redirect(can(user, "viewDashboard") ? "/" : "/jobs");
   return user;
 }
 
-/** Master account or managers: can see and manage every job and client. */
-export async function requireStaff() {
-  const user = await requireUser();
-  if (!isStaff(user)) redirect("/jobs");
-  return user;
+/** Users who can see every job (Owner, Admin, or Custom with "View Everyone's Jobs"). */
+export function isStaff(user: Pick<User, "role" | "permissions">) {
+  return can(user, "viewAllJobs");
 }
 
-export function isStaff(user: Pick<User, "role">) {
-  return user.role === "ADMIN" || user.role === "MANAGER";
-}
-
-/** Servers may only see jobs assigned to them; the master account and managers see every job. */
+/** Servers may only see jobs assigned to them unless they can view everyone's jobs. */
 export function canAccessJob(user: User, job: { serverId: string | null }) {
-  return isStaff(user) || job.serverId === user.id;
+  return can(user, "viewAllJobs") || job.serverId === user.id;
 }
 
-export const ROLE_LABEL = { ADMIN: "Master", MANAGER: "Manager", SERVER: "Process server" } as const;
+export { can };

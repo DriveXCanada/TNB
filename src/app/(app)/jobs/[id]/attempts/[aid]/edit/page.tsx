@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { canAccessJob, isStaff, requireUser } from "@/lib/auth";
+import { can, canAccessJob, requireUser } from "@/lib/auth";
 import { updateAttemptAction } from "@/app/actions";
 import { attemptPageData } from "@/lib/attemptPage";
 import { jobAddresses } from "@/lib/jobAddresses";
@@ -12,7 +12,7 @@ export default async function EditAttemptPage({ params }: { params: Promise<{ id
   const user = await requireUser();
   const { id, aid } = await params;
   const a = await prisma.attempt.findUnique({ where: { id: aid }, include: { job: true } });
-  if (!a || a.jobId !== id || !canAccessJob(user, a.job) || (!isStaff(user) && a.serverId !== user.id)) notFound();
+  if (!a || a.jobId !== id || !canAccessJob(user, a.job) || !(can(user, "manageJobs") || (can(user, "createAttempts") && a.serverId === user.id))) notFound();
   const data = await attemptPageData(user, a.job);
   return (
     <div className="space-y-4">
@@ -30,6 +30,7 @@ export default async function EditAttemptPage({ params }: { params: Promise<{ id
           servers={data.servers}
           currentUserId={user.id}
           canChooseServer={data.canChooseServer}
+          canEmail={data.canEmail}
           sharingOn={a.job.trackingEnabled}
           returnTo={`/jobs/${id}`}
           defaults={{

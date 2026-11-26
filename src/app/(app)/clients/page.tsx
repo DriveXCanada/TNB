@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { requirePerm } from "@/lib/auth";
 
 export default async function ClientsPage() {
-  await requireStaff();
+  await requirePerm("manageClients");
   const clients = await prisma.client.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { jobs: true } } } });
   return (
     <div className="space-y-4">

@@ -1,18 +1,18 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireStaff } from "@/lib/auth";
+import { requirePerm } from "@/lib/auth";
 import { updateJobAction } from "@/app/actions";
 import { jobNo } from "@/lib/labels";
 import JobForm from "@/components/JobForm";
 import { jobToFormValues } from "@/lib/jobForm";
 
 export default async function EditJobPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   const { id } = await params;
   const [job, clients, servers] = await Promise.all([
     prisma.job.findUnique({ where: { id } }),
     prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, contactName: true, email: true, phone: true, address: true } }),
-    prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.user.findMany({ where: { active: true, role: { not: "CONTACT" } }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   if (!job) notFound();
   return (

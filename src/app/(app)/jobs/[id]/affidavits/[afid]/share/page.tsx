@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { canAccessJob, requireUser } from "@/lib/auth";
+import { canAccessJob, requirePerm } from "@/lib/auth";
 import { emailAffidavitAction } from "@/app/actions";
 import { recipientOptions } from "@/lib/recipients";
 import { jobNo } from "@/lib/labels";
 import EmailShare from "@/components/EmailShare";
 
 export default async function ShareAffidavitPage({ params }: { params: Promise<{ id: string; afid: string }> }) {
-  const user = await requireUser();
+  const user = await requirePerm("emailSharing");
   const { id, afid } = await params;
   const a = await prisma.affidavit.findUnique({ where: { id: afid }, select: { jobId: true, kind: true, job: true } });
   if (!a || a.jobId !== id || !canAccessJob(user, a.job)) notFound();

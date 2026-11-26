@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { canAccessJob, isStaff, requireUser } from "@/lib/auth";
+import { can, canAccessJob, requireUser } from "@/lib/auth";
 import { deleteAffidavitAction } from "@/app/actions";
 import { fmtDateTime, jobNo } from "@/lib/labels";
 import AffidavitViewer from "@/components/AffidavitViewer";
@@ -28,9 +28,9 @@ export default async function AffidavitPage({ params, searchParams }: { params: 
           <div className="muted">Saved {fmtDateTime(a.updatedAt)}{a.createdBy && ` · created by ${a.createdBy.name}`}</div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link className="btn-secondary" href={`/jobs/${id}/affidavits/${afid}/edit`}>Edit</Link>
-          <Link className="btn-secondary" href={`/jobs/${id}/affidavits/${afid}/share`}>Email</Link>
-          {isStaff(user) && (
+          {can(user, "createAffidavits") && <Link className="btn-secondary" href={`/jobs/${id}/affidavits/${afid}/edit`}>Edit</Link>}
+          {can(user, "emailSharing") && <Link className="btn-secondary" href={`/jobs/${id}/affidavits/${afid}/share`}>Email</Link>}
+          {can(user, "deleteAffidavits") && (
             <form action={deleteAffidavitAction.bind(null, afid)}>
               <ConfirmButton className="btn-secondary text-rose-600" message="Delete this affidavit?">Delete</ConfirmButton>
             </form>

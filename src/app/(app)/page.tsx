@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { isStaff, requireUser } from "@/lib/auth";
+import { can, requireUser } from "@/lib/auth";
 import { fmtDate, fmtDateTime, jobNo, OUTCOME_LABEL } from "@/lib/labels";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
 export default async function Dashboard() {
   const user = await requireUser();
-  if (!isStaff(user)) redirect("/jobs");
+  if (!can(user, "viewDashboard")) redirect("/jobs");
 
   const open = { archived: false, status: { in: ["PENDING", "IN_PROGRESS"] as ("PENDING" | "IN_PROGRESS")[] } };
   const weekAgo = new Date(Date.now() - 7 * 86400000);

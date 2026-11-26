@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requirePerm } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { mailEnabled } from "@/lib/mail";
 import { saveSettingsAction } from "@/app/actions";
@@ -6,7 +6,7 @@ import { saveSettingsAction } from "@/app/actions";
 const PROVINCES = ["Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador", "Nova Scotia", "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan", "Northwest Territories", "Nunavut", "Yukon"];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
-  await requireAdmin();
+  await requirePerm("updateSettings");
   const s = await getSettings();
   const sp = await searchParams;
   return (

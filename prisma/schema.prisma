@@ -11,6 +11,8 @@ enum Role {
   ADMIN
   MANAGER
   SERVER
+  CONTACT
+  CUSTOM
 }
 
 enum JobStatus {
@@ -47,14 +49,28 @@ enum FileKind {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  phone        String?
-  passwordHash String
-  role         Role      @default(SERVER)
-  active       Boolean   @default(true)
-  city         String?
+  id             String    @id @default(cuid())
+  name           String
+  firstName      String?
+  lastName       String?
+  email          String    @unique
+  phone          String?
+  passwordHash   String?
+  role           Role      @default(SERVER)
+  permissions    String[]  @default([])
+  active         Boolean   @default(true)
+  dateOfBirth    DateTime?
+  licenseNumber  String?
+  licenseExpires DateTime?
+  timeZone       String?
+  defaultServer  Boolean   @default(false)
+  addressLine    String?
+  addressUnit    String?
+  city           String?
+  province       String?
+  postalCode     String?
+  inviteToken    String?   @unique
+  inviteExpires  DateTime?
   createdAt    DateTime  @default(now())
   sessions     Session[]
   jobs         Job[]     @relation("AssignedServer")

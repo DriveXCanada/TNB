@@ -91,6 +91,7 @@ export default function AttemptForm({
   currentUserId,
   canChooseServer,
   sharingOn,
+  canEmail = true,
   defaults,
 }: {
   action: (fd: FormData) => Promise<void>;
@@ -102,6 +103,7 @@ export default function AttemptForm({
   currentUserId: string;
   canChooseServer: boolean;
   sharingOn: boolean;
+  canEmail?: boolean;
   defaults?: AttemptDefaults;
 }) {
   const editing = Boolean(defaults);
@@ -307,9 +309,13 @@ export default function AttemptForm({
       </section>
 
       <section className="card space-y-3">
-        <h2 className="h2">Email &amp; Share</h2>
-        <p className="muted">Tick anyone who should get an emailed copy when you save. Nothing is emailed if nothing is ticked.</p>
-        <EmailShare recipients={recipients} mailOn={mailOn} />
+        <h2 className="h2">{canEmail ? "Email & Share" : "Share"}</h2>
+        {canEmail && (
+          <>
+            <p className="muted">Tick anyone who should get an emailed copy when you save. Nothing is emailed if nothing is ticked.</p>
+            <EmailShare recipients={recipients} mailOn={mailOn} />
+          </>
+        )}
         <label className="flex items-center gap-2 border-t border-slate-100 pt-3 text-sm">
           <input type="checkbox" name="shareWithClient" defaultChecked={defaults ? defaults.shareWithClient : true} className="h-5 w-5" />
           Show on the client&apos;s live tracking page {sharingOn ? "" : "(tracking is off for this job)"}

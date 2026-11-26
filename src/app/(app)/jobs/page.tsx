@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Prisma, JobStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { isStaff, requireUser } from "@/lib/auth";
+import { can, isStaff, requireUser } from "@/lib/auth";
 import { fmtDate, jobNo, STATUS_LABEL } from "@/lib/labels";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
@@ -36,14 +36,14 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
       take: 200,
       include: { client: true, server: true, _count: { select: { attempts: true } } },
     }),
-    prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.user.findMany({ where: { active: true, role: { not: "CONTACT" } }, orderBy: { name: "asc" } }),
   ]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="h1">{staff ? "Jobs" : "My jobs"}</h1>
-        {staff && <Link href="/jobs/new" className="btn-primary">+ New job</Link>}
+        {can(user, "manageJobs") && <Link href="/jobs/new" className="btn-primary">+ New job</Link>}
       </div>
       <form className="card grid gap-3 sm:grid-cols-4">
         <input className="input sm:col-span-2" name="q" placeholder="Search name, plaintiff, defendant, address, job #, case #…" defaultValue={sp.q} />

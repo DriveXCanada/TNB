@@ -3,21 +3,22 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
-import type { AttemptOutcome, JobStatus, Priority, Role } from "@prisma/client";
+import type { AttemptOutcome, JobStatus, Priority, Role, User } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   canAccessJob,
   createSession,
   destroySession,
   hashPassword,
-  requireAdmin,
-  requireStaff,
+  requirePerm,
   isStaff,
+  can,
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
 import { storeUploads } from "@/lib/files";
 import { saveSettings, DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
+import { effectivePermissions, PERMISSIONS, ROLE_PRESETS, type Permission } from "@/lib/permissions";
 import { isServedOutcome, jobNo, OUTCOME_LABEL, fmtDateTime } from "@/lib/labels";
 import { appUrl, sendMail } from "@/lib/mail";
 import { getSettings } from "@/lib/settings";
@@ -41,11 +42,11 @@ export async function loginAction(_: unknown, fd: FormData) {
   const email = (str(fd, "email") ?? "").toLowerCase();
   const password = str(fd, "password") ?? "";
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.active || !(await verifyPassword(password, user.passwordHash))) {
+  if (!user || !user.active || user.role === "CONTACT" || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
     return { error: "Invalid email or password." };
   }
   await createSession(user.id);
-  redirect(isStaff(user) ? "/" : "/jobs");
+  redirect(can(user, "viewDashboard") ? "/" : "/jobs");
 }
 
 export async function setupAction(_: unknown, fd: FormData) {
@@ -55,6 +56,8 @@ export async function setupAction(_: unknown, fd: FormData) {
   const user = await prisma.user.create({
     data: {
       name: req(fd, "name"),
+      firstName: req(fd, "name").split(" ")[0],
+      lastName: req(fd, "name").split(" ").slice(1).join(" "),
       email: req(fd, "email").toLowerCase(),
       passwordHash: await hashPassword(password),
       role: "ADMIN",
@@ -107,7 +110,7 @@ function jobData(fd: FormData) {
 }
 
 export async function createJobAction(fd: FormData) {
-  const me = await requireStaff();
+  const me = await requirePerm("manageJobs");
   const job = await prisma.job.create({
     data: { ...jobData(fd), createdById: me.id, trackingToken: randomBytes(18).toString("base64url") },
   });
@@ -116,14 +119,14 @@ export async function createJobAction(fd: FormData) {
 }
 
 export async function updateJobAction(id: string, fd: FormData) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   await prisma.job.update({ where: { id }, data: jobData(fd) });
   await storeUploads(files(fd, "documents"), "DOCUMENT", { jobId: id });
   redirect(`/jobs/${id}`);
 }
 
 export async function setJobStatusAction(id: string, fd: FormData) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   const status = req(fd, "status") as JobStatus;
   await prisma.job.update({
     where: { id },
@@ -133,32 +136,32 @@ export async function setJobStatusAction(id: string, fd: FormData) {
 }
 
 export async function assignServerAction(id: string, fd: FormData) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   await prisma.job.update({ where: { id }, data: { serverId: str(fd, "serverId") } });
   revalidatePath(`/jobs/${id}`);
 }
 
 export async function toggleTrackingAction(id: string) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   const job = await prisma.job.findUniqueOrThrow({ where: { id } });
   await prisma.job.update({ where: { id }, data: { trackingEnabled: !job.trackingEnabled } });
   revalidatePath(`/jobs/${id}`);
 }
 
 export async function regenerateTrackingAction(id: string) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   await prisma.job.update({ where: { id }, data: { trackingToken: randomBytes(18).toString("base64url") } });
   revalidatePath(`/jobs/${id}`);
 }
 
 export async function deleteJobAction(id: string) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   await prisma.job.delete({ where: { id } });
   redirect("/jobs");
 }
 
 export async function deleteFileAction(fileId: string, jobId: string) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   await prisma.file.delete({ where: { id: fileId } });
   revalidatePath(`/jobs/${jobId}`);
 }
@@ -226,9 +229,9 @@ function attemptData(fd: FormData, fallbackAddress: string) {
 }
 
 /** Staff can record an attempt for any active team member; servers always record their own. */
-async function pickServer(user: { id: string; role: string }, fd: FormData) {
+async function pickServer(user: User, fd: FormData) {
   const chosen = str(fd, "serverId");
-  if (!chosen || !isStaff(user as never) || chosen === user.id) return user.id;
+  if (!chosen || !can(user, "manageJobs") || chosen === user.id) return user.id;
   const exists = await prisma.user.findFirst({ where: { id: chosen, active: true } });
   return exists ? chosen : user.id;
 }
@@ -248,7 +251,7 @@ async function syncJobStatus(jobId: string) {
 }
 
 export async function createAttemptAction(jobId: string, fd: FormData) {
-  const user = await requireUser();
+  const user = await requirePerm("createAttempts");
   const job = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
   if (!canAccessJob(user, job)) throw new Error("Not allowed");
 
@@ -268,27 +271,27 @@ export async function createAttemptAction(jobId: string, fd: FormData) {
   });
   await storeUploads(files(fd, "photos"), "PHOTO", { attemptId: attempt.id, jobId });
   await syncJobStatus(jobId);
-  await emailAttempt(attempt.id, chosenRecipients(fd));
+  if (can(user, "emailSharing")) await emailAttempt(attempt.id, chosenRecipients(fd));
   redirect(`${returnPath(fd, jobId)}?logged=1`);
 }
 
 export async function updateAttemptAction(attemptId: string, fd: FormData) {
   const user = await requireUser();
   const a = await prisma.attempt.findUniqueOrThrow({ where: { id: attemptId }, include: { job: true } });
-  if (!canAccessJob(user, a.job) || (!isStaff(user) && a.serverId !== user.id)) throw new Error("Not allowed");
+  if (!canAccessJob(user, a.job) || !(can(user, "manageJobs") || (can(user, "createAttempts") && a.serverId === user.id))) throw new Error("Not allowed");
   await prisma.attempt.update({
     where: { id: attemptId },
-    data: { ...attemptData(fd, a.address), ...(isStaff(user) ? { serverId: await pickServer(user, fd) } : {}) },
+    data: { ...attemptData(fd, a.address), ...(can(user, "manageJobs") ? { serverId: await pickServer(user, fd) } : {}) },
   });
   await storeUploads(files(fd, "photos"), "PHOTO", { attemptId, jobId: a.jobId });
   await syncJobStatus(a.jobId);
-  await emailAttempt(attemptId, chosenRecipients(fd));
+  if (can(user, "emailSharing")) await emailAttempt(attemptId, chosenRecipients(fd));
   redirect(returnPath(fd, a.jobId));
 }
 
 /** "Share" on an existing attempt: email it to the chosen recipients. */
 export async function emailAttemptAction(attemptId: string, fd: FormData) {
-  const user = await requireUser();
+  const user = await requirePerm("emailSharing");
   const a = await prisma.attempt.findUniqueOrThrow({ where: { id: attemptId }, include: { job: true } });
   if (!canAccessJob(user, a.job)) throw new Error("Not allowed");
   const to = chosenRecipients(fd);
@@ -297,21 +300,21 @@ export async function emailAttemptAction(attemptId: string, fd: FormData) {
 }
 
 export async function deleteAttemptAction(attemptId: string, jobId: string) {
-  await requireStaff();
+  await requirePerm("deleteAttempts");
   await prisma.attempt.delete({ where: { id: attemptId } });
   await syncJobStatus(jobId);
   revalidatePath(`/jobs/${jobId}`);
 }
 
 export async function toggleAttemptShareAction(attemptId: string, jobId: string) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   const a = await prisma.attempt.findUniqueOrThrow({ where: { id: attemptId } });
   await prisma.attempt.update({ where: { id: attemptId }, data: { shareWithClient: !a.shareWithClient } });
   revalidatePath(`/jobs/${jobId}`);
 }
 
 export async function toggleArchiveAction(id: string) {
-  await requireStaff();
+  await requirePerm("manageJobs");
   const job = await prisma.job.findUniqueOrThrow({ where: { id } });
   await prisma.job.update({ where: { id }, data: { archived: !job.archived } });
   revalidatePath(`/jobs/${id}`);
@@ -331,50 +334,123 @@ function clientData(fd: FormData) {
 }
 
 export async function saveClientAction(id: string | null, fd: FormData) {
-  await requireStaff();
+  await requirePerm("manageClients");
   if (id) await prisma.client.update({ where: { id }, data: clientData(fd) });
   else await prisma.client.create({ data: clientData(fd) });
   redirect("/clients");
 }
 
 export async function deleteClientAction(id: string) {
-  await requireStaff();
+  await requirePerm("manageClients");
   await prisma.client.delete({ where: { id } });
   redirect("/clients");
 }
 
-/* ---------- team ---------- */
+/* ---------- employees ---------- */
 
-export async function saveUserAction(id: string | null, fd: FormData) {
-  const me = await requireAdmin();
-  const password = str(fd, "password");
-  const base = {
-    name: req(fd, "name"),
-    email: req(fd, "email").toLowerCase(),
-    phone: str(fd, "phone"),
-    city: str(fd, "city"),
-    role: (str(fd, "role") ?? "SERVER") as Role,
-    active: id === me.id ? true : fd.get("active") === "on",
-  };
-  if (id === me.id) base.role = "ADMIN";
-  if (password && password.length < 8) throw new Error("Password must be at least 8 characters");
-  if (id) {
-    await prisma.user.update({
-      where: { id },
-      data: { ...base, ...(password ? { passwordHash: await hashPassword(password) } : {}) },
-    });
-    if (!base.active) await prisma.session.deleteMany({ where: { userId: id } });
-  } else {
-    if (!password) throw new Error("Password is required for new users");
-    await prisma.user.create({ data: { ...base, passwordHash: await hashPassword(password) } });
+const INVITE_DAYS = 7;
+
+async function sendInvite(userId: string) {
+  const token = randomBytes(24).toString("base64url");
+  const u = await prisma.user.update({
+    where: { id: userId },
+    data: { inviteToken: token, inviteExpires: new Date(Date.now() + INVITE_DAYS * 86400000) },
+  });
+  const settings = await getSettings();
+  await sendMail(
+    [u.email],
+    `You're invited to ${settings.companyName}`,
+    `Hi ${u.firstName || u.name},\n\n${settings.companyName} has added you as a team member.\n` +
+      `Set your password and sign in here (link valid for ${INVITE_DAYS} days):\n\n${appUrl()}/invite/${token}\n`
+  );
+}
+
+export async function saveEmployeeAction(id: string | null, _: unknown, fd: FormData) {
+  const me = await requirePerm("manageEmployees");
+  const existing = id ? await prisma.user.findUniqueOrThrow({ where: { id } }) : null;
+  const self = existing?.id === me.id;
+  const iAmOwner = me.role === "ADMIN";
+  if (existing?.role === "ADMIN" && !iAmOwner) return { error: "Only an Owner can edit another Owner." };
+
+  let role = (str(fd, "role") ?? "SERVER") as Role;
+  if (!["ADMIN", "MANAGER", "SERVER", "CONTACT", "CUSTOM"].includes(role)) role = "SERVER";
+  if (role === "ADMIN" && !iAmOwner) return { error: "Only an Owner can make someone an Owner." };
+  // Nobody can grant permissions they don't have themselves.
+  const mine = new Set(effectivePermissions(me));
+  let permissions: string[] = role === "CUSTOM" ? fd.getAll("perm").map(String).filter((p): p is Permission => p in PERMISSIONS && mine.has(p as Permission)) : [];
+  if (role !== "CUSTOM" && role !== "ADMIN" && ROLE_PRESETS[role].some((p) => !mine.has(p))) return { error: "You can't grant more access than you have." };
+  if (self) {
+    role = existing!.role;
+    permissions = existing!.permissions;
   }
-  redirect("/team");
+
+  const firstName = str(fd, "firstName");
+  if (!firstName) return { error: "First name is required." };
+  if (!str(fd, "email")) return { error: "Email is required." };
+  const lastName = str(fd, "lastName") ?? "";
+  const day = (v: string | null) => (v ? new Date(`${v}T12:00:00Z`) : null);
+  const data = {
+    firstName,
+    lastName,
+    name: `${firstName} ${lastName}`.trim(),
+    email: str(fd, "email")!.toLowerCase(),
+    phone: str(fd, "phone"),
+    dateOfBirth: day(str(fd, "dateOfBirth")),
+    licenseNumber: str(fd, "licenseNumber"),
+    licenseExpires: day(str(fd, "licenseExpires")),
+    timeZone: str(fd, "timeZone"),
+    defaultServer: fd.get("defaultServer") === "on",
+    addressLine: str(fd, "addressLine"),
+    addressUnit: str(fd, "addressUnit"),
+    city: str(fd, "city"),
+    province: str(fd, "province"),
+    postalCode: str(fd, "postalCode"),
+    role,
+    permissions,
+    active: self ? true : fd.get("active") !== null ? fd.get("active") === "on" : true,
+  };
+  const password = str(fd, "password");
+  if (password && password.length < 8) return { error: "Password must be at least 8 characters" };
+  const clash = await prisma.user.findFirst({ where: { email: data.email, NOT: id ? { id } : undefined } });
+  if (clash) return { error: "Another employee already uses that email." };
+
+  if (data.defaultServer) await prisma.user.updateMany({ where: { defaultServer: true, NOT: id ? { id } : undefined }, data: { defaultServer: false } });
+
+  let userId = id;
+  if (existing) {
+    await prisma.user.update({ where: { id: existing.id }, data: { ...data, ...(password ? { passwordHash: await hashPassword(password), inviteToken: null } : {}) } });
+    if (!data.active || role === "CONTACT") await prisma.session.deleteMany({ where: { userId: existing.id } });
+  } else {
+    const u = await prisma.user.create({ data: { ...data, passwordHash: password ? await hashPassword(password) : null } });
+    userId = u.id;
+    if (!password && role !== "CONTACT") await sendInvite(u.id);
+  }
+  redirect(`/team/${userId}?saved=1`);
+}
+
+export async function resendInviteAction(id: string) {
+  const me = await requirePerm("manageEmployees");
+  const u = await prisma.user.findUniqueOrThrow({ where: { id } });
+  if (u.role === "ADMIN" && me.role !== "ADMIN") throw new Error("Only an Owner can edit another Owner.");
+  await sendInvite(id);
+  redirect(`/team/${id}?invited=1`);
+}
+
+export async function acceptInviteAction(token: string, _: unknown, fd: FormData) {
+  const u = await prisma.user.findUnique({ where: { inviteToken: token } });
+  if (!u || !u.inviteExpires || u.inviteExpires < new Date() || !u.active || u.role === "CONTACT") return { error: "This invitation link has expired. Ask your office to send a new one." };
+  const password = str(fd, "password") ?? "";
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password !== str(fd, "confirm")) return { error: "Passwords don't match." };
+  await prisma.user.update({ where: { id: u.id }, data: { passwordHash: await hashPassword(password), inviteToken: null, inviteExpires: null } });
+  await createSession(u.id);
+  redirect(can(u, "viewDashboard") ? "/" : "/jobs");
 }
 
 /* ---------- settings ---------- */
 
 export async function saveSettingsAction(fd: FormData) {
-  await requireAdmin();
+  await requirePerm("updateSettings");
   const values: Partial<Settings> = {};
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
     if (key === "sharePhotosWithClient") values[key] = fd.get(key) === "on" ? "true" : "false";
@@ -395,7 +471,7 @@ async function jobForAffidavit(jobId: string) {
 }
 
 export async function saveAffidavitAction(jobId: string, affidavitId: string | null, fd: FormData) {
-  const user = await requireUser();
+  const user = await requirePerm("createAffidavits");
   const job = await jobForAffidavit(jobId);
   if (!canAccessJob(user, job)) throw new Error("Not allowed");
   let raw: unknown = null;
@@ -417,13 +493,13 @@ export async function saveAffidavitAction(jobId: string, affidavitId: string | n
 }
 
 export async function deleteAffidavitAction(id: string) {
-  await requireStaff();
+  await requirePerm("deleteAffidavits");
   const a = await prisma.affidavit.delete({ where: { id } });
   redirect(`/jobs/${a.jobId}`);
 }
 
 export async function emailAffidavitAction(id: string, fd: FormData) {
-  const user = await requireUser();
+  const user = await requirePerm("emailSharing");
   const a = await prisma.affidavit.findUniqueOrThrow({ where: { id }, include: { job: true } });
   if (!canAccessJob(user, a.job)) throw new Error("Not allowed");
   const to = chosenRecipients(fd);
