@@ -173,6 +173,7 @@ export async function createAttemptAction(jobId: string, fd: FormData) {
       personServed: str(fd, "personServed"),
       relationship: str(fd, "relationship"),
       personDescription: str(fd, "personDescription"),
+      identifiedBy: str(fd, "identifiedBy"),
       notes: str(fd, "notes"),
       latitude: num("latitude"),
       longitude: num("longitude"),

@@ -45,12 +45,20 @@ export default function AttemptForm({
   addresses,
   recipientType,
   sharingOn,
+  province,
 }: {
   action: (fd: FormData) => Promise<void>;
   addresses: string[];
   recipientType: string;
   sharingOn: boolean;
+  province: string;
 }) {
+  const ns = province === "Nova Scotia";
+  const outcomes = OUTCOMES.map((o) =>
+    ns && o.value === "SUBSTITUTED" ? { ...o, label: "Substituted (per court order)" }
+    : ns && o.value === "POSTED" ? { ...o, label: "Posted (per court order)" }
+    : o
+  );
   const [outcome, setOutcome] = useState("");
   const [gps, setGps] = useState<Gps>(null);
   const [gpsMsg, setGpsMsg] = useState("Getting location…");
@@ -58,7 +66,7 @@ export default function AttemptForm({
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   const fileInput = useRef<HTMLInputElement>(null);
-  const served = OUTCOMES.find((o) => o.value === outcome)?.served;
+  const served = outcomes.find((o) => o.value === outcome)?.served;
 
   const locate = () => {
     if (!("geolocation" in navigator)) return setGpsMsg("GPS not available on this device");
@@ -110,7 +118,7 @@ export default function AttemptForm({
       <section className="card space-y-3">
         <div className="label">Outcome *</div>
         <div className="grid grid-cols-2 gap-2">
-          {OUTCOMES.map((o) => (
+          {outcomes.map((o) => (
             <button
               type="button"
               key={o.value}
@@ -165,6 +173,22 @@ export default function AttemptForm({
             <label className="label">Physical description</label>
             <input className="input" name="personDescription" placeholder="Male, approx. 45, 5'10&quot;, brown hair, glasses" />
           </div>
+          <div>
+            <label className="label">How did you know it was the right person?</label>
+            <input className="input" name="identifiedBy" list="id-methods" placeholder="Confirmed name when asked" />
+            <datalist id="id-methods">
+              <option value="The person confirmed their name when I asked" />
+              <option value="The person matched a photograph provided by the client" />
+              <option value="The person produced photo identification" />
+              <option value="The person is known to me" />
+              <option value="The person identified themself as an officer of the corporation" />
+            </datalist>
+          </div>
+          {ns && (outcome === "SUBSTITUTED" || outcome === "POSTED") && (
+            <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">
+              In Nova Scotia, an originating document must be delivered to an individual personally unless a judge has ordered substituted notice (Rule 31.10). Use this only if there is an order.
+            </p>
+          )}
         </section>
       )}
 

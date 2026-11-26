@@ -46,7 +46,7 @@ export function fmtDateTime(d: Date | string | null | undefined) {
   return new Date(d).toLocaleString("en-CA", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: process.env.APP_TIMEZONE || "America/Toronto",
+    timeZone: process.env.APP_TIMEZONE || "America/Halifax",
   });
 }
 
@@ -54,8 +54,15 @@ export function fmtDate(d: Date | string | null | undefined) {
   if (!d) return "";
   return new Date(d).toLocaleDateString("en-CA", {
     dateStyle: "medium",
-    timeZone: process.env.APP_TIMEZONE || "America/Toronto",
+    timeZone: process.env.APP_TIMEZONE || "America/Halifax",
   });
+}
+
+export function fmtLong(d: Date | string) {
+  const tz = process.env.APP_TIMEZONE || "America/Halifax";
+  const date = new Date(d).toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric", timeZone: tz });
+  const time = new Date(d).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit", timeZone: tz });
+  return `${date}, at ${time}`;
 }
 
 export function jobNo(n: number) {

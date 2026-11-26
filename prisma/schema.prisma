@@ -123,6 +123,7 @@ model Attempt {
   personServed    String?
   relationship    String?
   personDescription String?
+  identifiedBy    String?
   notes           String?
   latitude        Float?
   longitude       Float?

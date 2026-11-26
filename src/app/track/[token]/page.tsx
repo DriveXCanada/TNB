@@ -10,5 +10,5 @@ export default async function TrackPage({ params }: { params: Promise<{ token: s
   const { token } = await params;
   const data = await getTrackingData(token);
   if (!data) notFound();
-  return <LiveTracker token={token} initial={data} timeZone={process.env.APP_TIMEZONE || "America/Toronto"} />;
+  return <LiveTracker token={token} initial={data} timeZone={process.env.APP_TIMEZONE || "America/Halifax"} />;
 }

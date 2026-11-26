@@ -20,6 +20,7 @@ export default function AttemptCard({ a, children }: { a: AttemptWithExtras; chi
         </div>
       )}
       {a.personDescription && <div className="text-sm">Description: {a.personDescription}</div>}
+      {a.identifiedBy && <div className="text-sm">Identified by: {a.identifiedBy}</div>}
       {a.notes && <p className="mt-1 text-sm whitespace-pre-wrap">{a.notes}</p>}
       <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
         {a.latitude != null && a.longitude != null && (

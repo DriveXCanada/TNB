@@ -12,7 +12,9 @@ A web app for running a process serving business: jobs, service attempts, field 
   - camera photos, resized on the phone before upload
   - the details of the person served (name, relationship, physical description)
 - **Live client tracking** – every job gets a private link (`/track/<token>`) for your client. It updates live, about every 15 seconds, as attempts are logged, and shows only attempts marked “share with client”. Photos are optional (see Settings). You can disable a link or issue a new one at any time. If SMTP is configured, the client’s email and the job’s notify emails also get a message for each shared attempt.
-- **Affidavit of Service PDF** – generated from the served attempt. It covers personal, substituted and corporate service, lists prior attempts, and adds the jurat and signature blocks. The province, oath wording and commissioner line are set in Settings. **Check the wording against your province’s rules of court before you swear it.**
+- **Affidavit of Service PDF** – set up for Nova Scotia by default. It follows Civil Procedure Rule 31.05 and Form 31.05: delivery by a non-party, where and how the documents were delivered, how the server identified the person, an Exhibit "A" true copy of the documents, earlier attempts, and the "Sworn to [or Affirmed] … before me" block with signature, print name and official capacity lines. In Nova Scotia, substituted and posted delivery are labelled as needing a court order (Rule 31.10). Other provinces get a generic layout. **Compare the output with the current official Form 31.05 before you swear it.**
+
+Billing is not included: invoices are handled in Square. The fee field on each job is only for reference.
 
 ## Run locally
 
@@ -33,7 +35,7 @@ On first visit, you’ll be asked to create the admin account.
 4. In the app service’s **Variables**, add:
    - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (a reference to the database)
    - `APP_URL` = your public URL, for example `https://tnb.up.railway.app`. Used in tracking links.
-   - `APP_TIMEZONE` = for example `America/Edmonton` (default `America/Toronto`)
+   - `APP_TIMEZONE` = defaults to `America/Halifax`
    - Optional email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 5. Under **Settings → Networking**, click **Generate Domain**.
 6. Deploy. Migrations run automatically on start (`prisma migrate deploy`). Open the URL and create your admin account.

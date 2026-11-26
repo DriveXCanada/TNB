@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { canAccessJob, requireUser } from "@/lib/auth";
 import { createAttemptAction } from "@/app/actions";
 import AttemptForm from "@/components/AttemptForm";
+import { getSettings } from "@/lib/settings";
 
 export default async function NewAttemptPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -21,6 +22,7 @@ export default async function NewAttemptPage({ params }: { params: Promise<{ id:
         addresses={addresses}
         recipientType={job.recipientType}
         sharingOn={job.trackingEnabled}
+        province={(await getSettings()).province}
       />
     </div>
   );

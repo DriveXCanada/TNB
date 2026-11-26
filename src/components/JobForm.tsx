@@ -28,17 +28,17 @@ export default function JobForm({
             <option value="GOVERNMENT">Government / agency</option>
           </select>
         </div>
-        <div className="sm:col-span-2"><label className="label">Service address *</label><input className="input" name="address" required defaultValue={job?.address} placeholder="123 Main St, Toronto, ON M5V 1A1" /></div>
+        <div className="sm:col-span-2"><label className="label">Service address *</label><input className="input" name="address" required defaultValue={job?.address} placeholder="1234 Barrington St, Halifax, NS B3J 1Y9" /></div>
         <div className="sm:col-span-2"><label className="label">Alternate addresses (one per line)</label><textarea className="input" rows={2} name="altAddresses" defaultValue={job?.altAddresses ?? ""} /></div>
         <div className="sm:col-span-2"><label className="label">Description (age, appearance, vehicle…)</label><textarea className="input" rows={2} name="recipientDescription" defaultValue={job?.recipientDescription ?? ""} /></div>
       </section>
 
       <section className="card grid gap-4 sm:grid-cols-2">
         <h2 className="h2 sm:col-span-2">Court &amp; documents</h2>
-        <div><label className="label">Court</label><input className="input" name="courtName" defaultValue={job?.courtName ?? defaultCourt} placeholder="Ontario Superior Court of Justice" /></div>
-        <div><label className="label">Court file number</label><input className="input" name="courtFileNumber" defaultValue={job?.courtFileNumber ?? ""} /></div>
+        <div><label className="label">Court</label><input className="input" name="courtName" defaultValue={job?.courtName ?? defaultCourt} placeholder="Supreme Court of Nova Scotia" /></div>
+        <div><label className="label">Court file number</label><input className="input" name="courtFileNumber" defaultValue={job?.courtFileNumber ?? ""} placeholder="Hfx No. 512345" /></div>
         <div className="sm:col-span-2"><label className="label">Title of proceeding</label><input className="input" name="caseTitle" defaultValue={job?.caseTitle ?? ""} placeholder="JANE DOE, Plaintiff – and – JOHN SMITH, Defendant" /></div>
-        <div className="sm:col-span-2"><label className="label">Documents to be served</label><textarea className="input" rows={2} name="documentsServed" defaultValue={job?.documentsServed ?? ""} placeholder="Statement of Claim issued January 5, 2026" /></div>
+        <div className="sm:col-span-2"><label className="label">Documents to be served</label><textarea className="input" rows={2} name="documentsServed" defaultValue={job?.documentsServed ?? ""} placeholder="Notice of Action and Statement of Claim" /></div>
         <div className="sm:col-span-2"><label className="label">Upload documents (PDF, images)</label><input className="input" type="file" name="documents" multiple /></div>
       </section>
 

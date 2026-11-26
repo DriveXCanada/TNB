@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { Attempt, Job, User, Client } from "@prisma/client";
 import type { Settings } from "./settings";
-import { fmtDateTime, isServedOutcome, OUTCOME_LABEL } from "./labels";
+import { fmtDateTime, fmtLong, isServedOutcome, OUTCOME_LABEL } from "./labels";
 
 type JobFull = Job & { attempts: (Attempt & { server: User | null })[]; client: Client | null; server: User | null };
 
@@ -36,7 +36,7 @@ class Writer {
       this.y = 740;
     }
   }
-  text(str: string, opts: { size?: number; bold?: boolean; center?: boolean; indent?: number; gap?: number } = {}) {
+  text(str: string, opts: { size?: number; bold?: boolean; center?: boolean; right?: boolean; indent?: number; gap?: number } = {}) {
     const size = opts.size ?? 11;
     const font = opts.bold ? this.bold : this.font;
     const left = 72 + (opts.indent ?? 0);
@@ -55,7 +55,8 @@ class Writer {
       lines.push(line);
       for (const l of lines) {
         this.ensure(size + 4);
-        const x = opts.center ? (612 - font.widthOfTextAtSize(l, size)) / 2 : left;
+        const tw = font.widthOfTextAtSize(l, size);
+        const x = opts.center ? (612 - tw) / 2 : opts.right ? 540 - tw : left;
         this.page.drawText(l, { x, y: this.y, size, font, color: rgb(0, 0, 0) });
         this.y -= size + 4;
       }
@@ -67,10 +68,15 @@ class Writer {
   }
 }
 
-export async function buildAffidavit(job: JobFull, settings: Settings, attemptId?: string) {
-  const served = attemptId
+function pickAttempt(job: JobFull, attemptId?: string) {
+  return attemptId
     ? job.attempts.find((a) => a.id === attemptId)
     : [...job.attempts].reverse().find((a) => isServedOutcome(a.outcome)) ?? job.attempts.at(-1);
+}
+
+export async function buildAffidavit(job: JobFull, settings: Settings, attemptId?: string) {
+  if (settings.province === "Nova Scotia") return buildNovaScotia(job, settings, attemptId);
+  const served = pickAttempt(job, attemptId);
 
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.TimesRoman);
@@ -134,5 +140,90 @@ export async function buildAffidavit(job: JobFull, settings: Settings, attemptId
 
   if (settings.affidavitFooter) w.text(settings.affidavitFooter, { size: 9 });
 
+  return doc.save();
+}
+
+/**
+ * Nova Scotia layout modelled on Civil Procedure Rule 31.05 / Form 31.05: delivery by a non-party,
+ * where and how the document was delivered, how the deponent knew the recipient, and a true copy
+ * of the delivered document attached as an exhibit. Substituted notice requires an order (Rule 31.10).
+ */
+async function buildNovaScotia(job: JobFull, settings: Settings, attemptId?: string) {
+  const a = pickAttempt(job, attemptId);
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.TimesRoman);
+  const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
+  const w = new Writer(doc, font, bold);
+
+  const server = a?.server ?? job.server;
+  const name = server?.name ?? "______________________";
+  const city = server?.city || "______________";
+  const docs = job.documentsServed?.trim() || "the documents in this proceeding";
+  const who = job.recipientName;
+  const blank = "____________________";
+
+  w.text(job.courtFileNumber || "20__ Hfx No. __________", { right: true, gap: 18 });
+  w.text(job.courtName || settings.defaultCourt || "Supreme Court of Nova Scotia", { bold: true, center: true, size: 13, gap: 14 });
+  w.text("Between:", { gap: 6 });
+  w.text(job.caseTitle || blank, { center: true, gap: 20 });
+  w.text("Affidavit of Service", { bold: true, center: true, size: 14, gap: 18 });
+  w.text(`I, ${name}, of ${city}, Nova Scotia, ${settings.oathPhrase}:`, { gap: 12 });
+
+  let n = 1;
+  const p = (t: string) => w.text(`${n++}. ${t}`, { gap: 10 });
+  p("I am not a party to this proceeding.");
+
+  if (a && isServedOutcome(a.outcome)) {
+    const when = fmtLong(a.attemptedAt);
+    const person = a.personServed || who;
+    const order = `in accordance with the order for substituted notice granted on ${blank}`;
+    switch (a.outcome) {
+      case "PERSONAL":
+        p(`On ${when}, I delivered ${docs} to ${who} by handing a copy to ${who} personally at ${a.address}.`);
+        break;
+      case "CORPORATE":
+        p(`On ${when}, I delivered ${docs} to ${who} by handing a copy to ${person}${a.relationship ? `, ${a.relationship} of ${who},` : ""} at ${a.address}.`);
+        break;
+      case "SUBSTITUTED":
+        p(`On ${when}, ${order}, I delivered ${docs} to ${who} by leaving a copy with ${person}${a.relationship ? ` (${a.relationship})` : ""} at ${a.address}.`);
+        break;
+      case "POSTED":
+        p(`On ${when}, ${order}, I delivered ${docs} to ${who} by leaving a copy at ${a.address}.`);
+        break;
+    }
+    if (a.outcome !== "POSTED") {
+      const how = a.identifiedBy?.trim().replace(/\.$/, "");
+      p(`I knew the person to whom I handed the documents was ${person} because ${how ? how.charAt(0).toLowerCase() + how.slice(1) : blank + blank}.`);
+      if (a.personDescription) p(`The person to whom I handed the documents is described as follows: ${a.personDescription}.`);
+    }
+    p(`Exhibit "A" to this affidavit is a true copy of the ${docs} that I delivered.`);
+  } else {
+    p("No delivery of the documents has been recorded for this job.");
+  }
+
+  const prior = job.attempts.filter((x) => x.id !== a?.id && !isServedOutcome(x.outcome));
+  if (prior.length) {
+    w.text(`${n++}. Before delivering the documents, attempts at delivery were made as follows:`, { gap: 4 });
+    for (const x of prior)
+      w.text(`• ${fmtLong(x.attemptedAt)}, at ${x.address}: ${OUTCOME_LABEL[x.outcome]}${x.notes ? ` – ${x.notes}` : ""}`, { indent: 18, gap: 2 });
+    w.text("", { gap: 6 });
+  }
+  w.y -= 20;
+
+  w.ensure(170);
+  const top = w.y;
+  const line = (x: number, y: number, t: string, f = font, s = 10) => w.page.drawText(t, { x, y, size: s, font: f });
+  line(72, top, "Sworn to [or Affirmed] at ________________,");
+  line(72, top - 14, `Nova Scotia, on ________________, 20____,`);
+  line(72, top - 28, "before me:");
+  const sig = top - 80;
+  w.page.drawLine({ start: { x: 72, y: sig }, end: { x: 280, y: sig }, thickness: 0.7 });
+  w.page.drawLine({ start: { x: 330, y: sig }, end: { x: 540, y: sig }, thickness: 0.7 });
+  line(72, sig - 12, settings.commissionerTitle, font, 9);
+  line(72, sig - 26, "Print name: ______________________", font, 9);
+  line(72, sig - 40, "Official capacity: _________________", font, 9);
+  line(330, sig - 12, `Signature of ${name}`, font, 9);
+  w.y = sig - 70;
+  if (settings.affidavitFooter) w.text(settings.affidavitFooter, { size: 9 });
   return doc.save();
 }
