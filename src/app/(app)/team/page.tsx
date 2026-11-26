@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, ROLE_LABEL } from "@/lib/auth";
 
 export default async function TeamPage() {
   await requireAdmin();
@@ -21,7 +21,7 @@ export default async function TeamPage() {
             {users.map((u) => (
               <tr key={u.id} className={u.active ? "" : "opacity-50"}>
                 <td className="td"><Link className="font-medium text-indigo-700" href={`/team/${u.id}`}>{u.name}</Link>{!u.active && " (inactive)"}</td>
-                <td className="td">{u.role === "ADMIN" ? "Admin" : "Server"}</td>
+                <td className="td">{ROLE_LABEL[u.role]}</td>
                 <td className="td hidden sm:table-cell">{u.email}</td>
                 <td className="td"><Link className="text-indigo-700" href={`/jobs?status=open&server=${u.id}`}>{u._count.jobs}</Link></td>
               </tr>

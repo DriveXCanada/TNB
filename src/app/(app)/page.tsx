@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { isStaff, requireUser } from "@/lib/auth";
 import { fmtDate, fmtDateTime, jobNo, OUTCOME_LABEL } from "@/lib/labels";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
 export default async function Dashboard() {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/field");
+  if (!isStaff(user)) redirect("/jobs");
 
-  const open = { status: { in: ["PENDING", "IN_PROGRESS"] as ("PENDING" | "IN_PROGRESS")[] } };
+  const open = { archived: false, status: { in: ["PENDING", "IN_PROGRESS"] as ("PENDING" | "IN_PROGRESS")[] } };
   const weekAgo = new Date(Date.now() - 7 * 86400000);
   const [openCount, unassigned, overdue, servedWeek, dueSoon, recent] = await Promise.all([
     prisma.job.count({ where: open }),

@@ -24,12 +24,12 @@ export default async function FieldJobPage({ params, searchParams }: { params: P
     <div className="mx-auto max-w-xl space-y-4">
       {sp.logged && <div className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800">✓ Attempt saved{job.trackingEnabled ? " and shared with the client" : ""}.</div>}
       <div>
-        <div className="muted">{jobNo(job.number)}{job.dueDate && ` · due ${fmtDate(job.dueDate)}`}</div>
+        <div className="muted"><a className="underline" href={`/jobs/${job.id}`}>{jobNo(job.number)}</a>{job.dueDate && ` · due ${fmtDate(job.dueDate)}`}</div>
         <h1 className="h1">{job.recipientName}</h1>
         <div className="mt-1 flex gap-2"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div>
       </div>
 
-      <Link href={`/field/${job.id}/attempt`} className="btn-primary w-full py-4 text-lg">+ Log attempt</Link>
+      <Link href={`/field/${job.id}/attempt?from=field`} className="btn-primary w-full py-4 text-lg">+ Log attempt</Link>
 
       <section className="card space-y-3">
         {addresses.map((addr, i) => (

@@ -1,15 +1,15 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { isStaff, requireUser } from "@/lib/auth";
 import { fmtDate, jobNo } from "@/lib/labels";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
 export default async function FieldPage({ searchParams }: { searchParams: Promise<{ all?: string }> }) {
   const user = await requireUser();
   const sp = await searchParams;
-  const where: Prisma.JobWhereInput = { status: { in: ["PENDING", "IN_PROGRESS"] } };
-  if (user.role !== "ADMIN" || !sp.all) where.serverId = user.id;
+  const where: Prisma.JobWhereInput = { archived: false, status: { in: ["PENDING", "IN_PROGRESS"] } };
+  if (!isStaff(user) || !sp.all) where.serverId = user.id;
   const jobs = await prisma.job.findMany({
     where,
     orderBy: [{ priority: "desc" }, { dueDate: { sort: "asc", nulls: "last" } }],
@@ -20,7 +20,7 @@ export default async function FieldPage({ searchParams }: { searchParams: Promis
     <div className="mx-auto max-w-xl space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="h1">{sp.all ? "All open jobs" : "My jobs"}</h1>
-        {user.role === "ADMIN" && (
+        {isStaff(user) && (
           <Link className="text-sm text-indigo-700" href={sp.all ? "/field" : "/field?all=1"}>
             {sp.all ? "Show mine" : "Show all"}
           </Link>

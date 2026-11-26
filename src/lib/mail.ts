@@ -4,7 +4,12 @@ export function mailEnabled() {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM);
 }
 
-export async function sendMail(to: string[], subject: string, text: string) {
+export async function sendMail(
+  to: string[],
+  subject: string,
+  text: string,
+  attachments: { filename: string; content: Buffer; contentType: string }[] = []
+) {
   if (!mailEnabled() || to.length === 0) return;
   const transport = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -13,7 +18,7 @@ export async function sendMail(to: string[], subject: string, text: string) {
     auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
   });
   try {
-    await transport.sendMail({ from: process.env.SMTP_FROM, to: to.join(", "), subject, text });
+    await transport.sendMail({ from: process.env.SMTP_FROM, to: to.join(", "), subject, text, attachments });
   } catch (err) {
     console.error("Failed to send notification email", err);
   }

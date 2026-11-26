@@ -67,7 +67,7 @@ export default function JobForm({
           </div>
         )}
         <div className="sm:col-span-2">
-          <label className="label">Extra emails to notify on each attempt (comma-separated)</label>
+          <label className="label">Extra client emails (offered as options when sharing attempts)</label>
           <input className="input" name="notifyEmails" defaultValue={v("notifyEmails")} placeholder="clerk@lawfirm.ca" />
         </div>
       </section>

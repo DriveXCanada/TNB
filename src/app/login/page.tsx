@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 import LoginForm from "./LoginForm";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage() {
   if ((await prisma.user.count()) === 0) redirect("/setup");
   const user = await getCurrentUser();
-  if (user) redirect(user.role === "ADMIN" ? "/" : "/field");
+  if (user) redirect(isStaff(user) ? "/" : "/jobs");
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="card w-full max-w-sm">

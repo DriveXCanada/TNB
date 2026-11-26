@@ -11,6 +11,8 @@ import {
   destroySession,
   hashPassword,
   requireAdmin,
+  requireStaff,
+  isStaff,
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
@@ -40,7 +42,7 @@ export async function loginAction(_: unknown, fd: FormData) {
     return { error: "Invalid email or password." };
   }
   await createSession(user.id);
-  redirect(user.role === "ADMIN" ? "/" : "/field");
+  redirect(isStaff(user) ? "/" : "/jobs");
 }
 
 export async function setupAction(_: unknown, fd: FormData) {
@@ -102,23 +104,23 @@ function jobData(fd: FormData) {
 }
 
 export async function createJobAction(fd: FormData) {
-  await requireAdmin();
+  const me = await requireStaff();
   const job = await prisma.job.create({
-    data: { ...jobData(fd), trackingToken: randomBytes(18).toString("base64url") },
+    data: { ...jobData(fd), createdById: me.id, trackingToken: randomBytes(18).toString("base64url") },
   });
   await storeUploads(files(fd, "documents"), "DOCUMENT", { jobId: job.id });
   redirect(`/jobs/${job.id}`);
 }
 
 export async function updateJobAction(id: string, fd: FormData) {
-  await requireAdmin();
+  await requireStaff();
   await prisma.job.update({ where: { id }, data: jobData(fd) });
   await storeUploads(files(fd, "documents"), "DOCUMENT", { jobId: id });
   redirect(`/jobs/${id}`);
 }
 
 export async function setJobStatusAction(id: string, fd: FormData) {
-  await requireAdmin();
+  await requireStaff();
   const status = req(fd, "status") as JobStatus;
   await prisma.job.update({
     where: { id },
@@ -128,111 +130,177 @@ export async function setJobStatusAction(id: string, fd: FormData) {
 }
 
 export async function assignServerAction(id: string, fd: FormData) {
-  await requireAdmin();
+  await requireStaff();
   await prisma.job.update({ where: { id }, data: { serverId: str(fd, "serverId") } });
   revalidatePath(`/jobs/${id}`);
 }
 
 export async function toggleTrackingAction(id: string) {
-  await requireAdmin();
+  await requireStaff();
   const job = await prisma.job.findUniqueOrThrow({ where: { id } });
   await prisma.job.update({ where: { id }, data: { trackingEnabled: !job.trackingEnabled } });
   revalidatePath(`/jobs/${id}`);
 }
 
 export async function regenerateTrackingAction(id: string) {
-  await requireAdmin();
+  await requireStaff();
   await prisma.job.update({ where: { id }, data: { trackingToken: randomBytes(18).toString("base64url") } });
   revalidatePath(`/jobs/${id}`);
 }
 
 export async function deleteJobAction(id: string) {
-  await requireAdmin();
+  await requireStaff();
   await prisma.job.delete({ where: { id } });
   redirect("/jobs");
 }
 
 export async function deleteFileAction(fileId: string, jobId: string) {
-  await requireAdmin();
+  await requireStaff();
   await prisma.file.delete({ where: { id: fileId } });
   revalidatePath(`/jobs/${jobId}`);
 }
 
 /* ---------- attempts ---------- */
 
-export async function createAttemptAction(jobId: string, fd: FormData) {
-  const user = await requireUser();
-  const job = await prisma.job.findUniqueOrThrow({ where: { id: jobId }, include: { client: true } });
-  if (!canAccessJob(user, job)) throw new Error("Not allowed");
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  const outcome = req(fd, "outcome") as AttemptOutcome;
+/** Checked recipients plus anything typed in "other email", de-duplicated and validated. */
+function chosenRecipients(fd: FormData) {
+  const typed = (str(fd, "emailOther") ?? "").split(/[,;\s]+/);
+  const picked = fd.getAll("emailTo").map(String);
+  return [...new Set([...picked, ...typed].map((e) => e.trim().toLowerCase()).filter((e) => EMAIL_RE.test(e)))];
+}
+
+async function emailAttempt(attemptId: string, to: string[]) {
+  if (to.length === 0) return;
+  const a = await prisma.attempt.findUniqueOrThrow({
+    where: { id: attemptId },
+    include: { server: true, files: true, job: true },
+  });
+  const job = a.job;
+  const served = isServedOutcome(a.outcome);
+  const lines = [
+    `Service update for ${job.recipientName}`,
+    job.clientReference ? `Your job no.: ${job.clientReference}` : "",
+    job.courtFileNumber ? `Court case no.: ${job.courtFileNumber}` : "",
+    "",
+    `${OUTCOME_LABEL[a.outcome]}`,
+    `${fmtDateTime(a.attemptedAt)}`,
+    `${a.address}`,
+    a.server ? `Server: ${a.server.name}` : "",
+    a.personServed ? `Person served: ${a.personServed}${a.relationship ? ` (${a.relationship})` : ""}` : "",
+    a.personDescription ? `Description: ${a.personDescription}` : "",
+    a.latitude != null && a.longitude != null ? `GPS: https://www.google.com/maps?q=${a.latitude},${a.longitude}` : "",
+    a.notes ? `\nNotes: ${a.notes}` : "",
+    job.trackingEnabled && a.shareWithClient ? `\nLive tracking: ${appUrl()}/track/${job.trackingToken}` : "",
+  ];
+  await sendMail(
+    to,
+    `${served ? "Served" : "Attempt"}: ${job.recipientName} – ${jobNo(job.number)}`,
+    lines.filter((l, i) => l !== "" || i === 3).join("\n"),
+    a.files.filter((f) => f.kind === "PHOTO").map((f) => ({ filename: f.filename, content: Buffer.from(f.data), contentType: f.mimeType }))
+  );
+}
+
+function attemptData(fd: FormData, fallbackAddress: string) {
   const num = (k: string) => {
     const v = str(fd, k);
     return v && !Number.isNaN(Number(v)) ? Number(v) : null;
   };
   const when = str(fd, "attemptedAt");
+  const addr = str(fd, "address");
+  return {
+    attemptedAt: when ? new Date(when) : new Date(),
+    address: addr === "__new" ? (str(fd, "newAddress") ?? fallbackAddress) : (addr ?? fallbackAddress),
+    outcome: req(fd, "outcome") as AttemptOutcome,
+    personServed: str(fd, "personServed"),
+    relationship: str(fd, "relationship"),
+    personDescription: str(fd, "personDescription"),
+    identifiedBy: str(fd, "identifiedBy"),
+    notes: str(fd, "notes"),
+    shareWithClient: fd.get("shareWithClient") === "on",
+  };
+}
 
+function returnPath(fd: FormData, jobId: string) {
+  const r = str(fd, "returnTo");
+  return r && (r.startsWith("/jobs/") || r.startsWith("/field/")) ? r : `/jobs/${jobId}`;
+}
+
+async function syncJobStatus(jobId: string) {
+  const attempts = await prisma.attempt.findMany({ where: { jobId }, orderBy: { attemptedAt: "desc" } });
+  const servedA = attempts.find((x) => isServedOutcome(x.outcome));
+  const job = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+  if (servedA) await prisma.job.update({ where: { id: jobId }, data: { status: "SERVED", servedAt: servedA.attemptedAt } });
+  else if (job.status === "PENDING" && attempts.length) await prisma.job.update({ where: { id: jobId }, data: { status: "IN_PROGRESS" } });
+  else if (job.status === "SERVED") await prisma.job.update({ where: { id: jobId }, data: { status: attempts.length ? "IN_PROGRESS" : "PENDING", servedAt: null } });
+}
+
+export async function createAttemptAction(jobId: string, fd: FormData) {
+  const user = await requireUser();
+  const job = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+  if (!canAccessJob(user, job)) throw new Error("Not allowed");
+
+  const n = (k: string) => {
+    const v = str(fd, k);
+    return v && !Number.isNaN(Number(v)) ? Number(v) : null;
+  };
   const attempt = await prisma.attempt.create({
     data: {
+      ...attemptData(fd, job.address),
       jobId,
       serverId: user.id,
-      attemptedAt: when ? new Date(when) : new Date(),
-      address: str(fd, "address") ?? job.address,
-      outcome,
-      personServed: str(fd, "personServed"),
-      relationship: str(fd, "relationship"),
-      personDescription: str(fd, "personDescription"),
-      identifiedBy: str(fd, "identifiedBy"),
-      notes: str(fd, "notes"),
-      latitude: num("latitude"),
-      longitude: num("longitude"),
-      gpsAccuracy: num("gpsAccuracy"),
-      shareWithClient: fd.get("shareWithClient") === "on",
+      latitude: n("latitude"),
+      longitude: n("longitude"),
+      gpsAccuracy: n("gpsAccuracy"),
     },
   });
   await storeUploads(files(fd, "photos"), "PHOTO", { attemptId: attempt.id, jobId });
+  await syncJobStatus(jobId);
+  await emailAttempt(attempt.id, chosenRecipients(fd));
+  redirect(`${returnPath(fd, jobId)}?logged=1`);
+}
 
-  const served = isServedOutcome(outcome);
-  await prisma.job.update({
-    where: { id: jobId },
-    data: served
-      ? { status: "SERVED", servedAt: attempt.attemptedAt }
-      : job.status === "PENDING"
-        ? { status: "IN_PROGRESS" }
-        : {},
-  });
+export async function updateAttemptAction(attemptId: string, fd: FormData) {
+  const user = await requireUser();
+  const a = await prisma.attempt.findUniqueOrThrow({ where: { id: attemptId }, include: { job: true } });
+  if (!canAccessJob(user, a.job) || (!isStaff(user) && a.serverId !== user.id)) throw new Error("Not allowed");
+  await prisma.attempt.update({ where: { id: attemptId }, data: attemptData(fd, a.address) });
+  await storeUploads(files(fd, "photos"), "PHOTO", { attemptId, jobId: a.jobId });
+  await syncJobStatus(a.jobId);
+  await emailAttempt(attemptId, chosenRecipients(fd));
+  redirect(returnPath(fd, a.jobId));
+}
 
-  if (attempt.shareWithClient && job.trackingEnabled) {
-    const to = [job.notifyEmails, job.client?.email]
-      .filter(Boolean)
-      .join(",")
-      .split(/[,;\s]+/)
-      .filter((e) => e.includes("@"));
-    const ref = job.clientReference ? ` (your ref. ${job.clientReference})` : "";
-    await sendMail(
-      [...new Set(to)],
-      `${served ? "Served" : "Attempt update"}: ${job.recipientName} – ${jobNo(job.number)}`,
-      `Service update for ${job.recipientName}${ref}\n\n` +
-        `${fmtDateTime(attempt.attemptedAt)}\n${OUTCOME_LABEL[outcome]}\n${attempt.address}\n` +
-        `${attempt.notes ? `\nNotes: ${attempt.notes}\n` : ""}` +
-        `\nLive tracking: ${appUrl()}/track/${job.trackingToken}\n`
-    );
-  }
-
-  redirect(user.role === "ADMIN" ? `/jobs/${jobId}` : `/field/${jobId}?logged=1`);
+/** "Share" on an existing attempt: email it to the chosen recipients. */
+export async function emailAttemptAction(attemptId: string, fd: FormData) {
+  const user = await requireUser();
+  const a = await prisma.attempt.findUniqueOrThrow({ where: { id: attemptId }, include: { job: true } });
+  if (!canAccessJob(user, a.job)) throw new Error("Not allowed");
+  const to = chosenRecipients(fd);
+  await emailAttempt(attemptId, to);
+  redirect(`/jobs/${a.jobId}?emailed=${to.length}`);
 }
 
 export async function deleteAttemptAction(attemptId: string, jobId: string) {
-  await requireAdmin();
+  await requireStaff();
   await prisma.attempt.delete({ where: { id: attemptId } });
+  await syncJobStatus(jobId);
   revalidatePath(`/jobs/${jobId}`);
 }
 
 export async function toggleAttemptShareAction(attemptId: string, jobId: string) {
-  await requireAdmin();
+  await requireStaff();
   const a = await prisma.attempt.findUniqueOrThrow({ where: { id: attemptId } });
   await prisma.attempt.update({ where: { id: attemptId }, data: { shareWithClient: !a.shareWithClient } });
   revalidatePath(`/jobs/${jobId}`);
+}
+
+export async function toggleArchiveAction(id: string) {
+  await requireStaff();
+  const job = await prisma.job.findUniqueOrThrow({ where: { id } });
+  await prisma.job.update({ where: { id }, data: { archived: !job.archived } });
+  revalidatePath(`/jobs/${id}`);
 }
 
 /* ---------- clients ---------- */
@@ -249,14 +317,14 @@ function clientData(fd: FormData) {
 }
 
 export async function saveClientAction(id: string | null, fd: FormData) {
-  await requireAdmin();
+  await requireStaff();
   if (id) await prisma.client.update({ where: { id }, data: clientData(fd) });
   else await prisma.client.create({ data: clientData(fd) });
   redirect("/clients");
 }
 
 export async function deleteClientAction(id: string) {
-  await requireAdmin();
+  await requireStaff();
   await prisma.client.delete({ where: { id } });
   redirect("/clients");
 }

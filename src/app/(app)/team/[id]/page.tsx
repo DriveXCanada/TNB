@@ -24,8 +24,9 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
           <div>
             <label className="label">Role</label>
             <select className="input" name="role" defaultValue={u?.role ?? "SERVER"} disabled={self}>
-              <option value="SERVER">Process server</option>
-              <option value="ADMIN">Admin (office)</option>
+              <option value="SERVER">Process server – sees only their assigned jobs</option>
+              <option value="MANAGER">Manager – sees and manages every job</option>
+              <option value="ADMIN">Master – everything, plus team and settings</option>
             </select>
           </div>
         </div>

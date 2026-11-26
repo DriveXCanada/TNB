@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import EmailShare from "./EmailShare";
+import type { Recipient } from "@/lib/recipients";
 
 const OUTCOMES: { value: string; label: string; served?: boolean }[] = [
   { value: "PERSONAL", label: "Personal service", served: true },
@@ -15,12 +17,24 @@ const OUTCOMES: { value: string; label: string; served?: boolean }[] = [
   { value: "OTHER", label: "Other" },
 ];
 
+export type AttemptDefaults = {
+  outcome: string;
+  attemptedAt: string; // ISO
+  address: string;
+  personServed: string;
+  relationship: string;
+  personDescription: string;
+  identifiedBy: string;
+  notes: string;
+  shareWithClient: boolean;
+};
+
 type Gps = { lat: number; lng: number; acc: number } | null;
 
-function nowLocal() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+function toLocalInput(d: Date) {
+  const x = new Date(d);
+  x.setMinutes(x.getMinutes() - x.getTimezoneOffset());
+  return x.toISOString().slice(0, 16);
 }
 
 async function resizeImage(file: File, max = 1600, quality = 0.8): Promise<File> {
@@ -46,27 +60,40 @@ export default function AttemptForm({
   recipientType,
   sharingOn,
   province,
+  recipients,
+  mailOn,
+  returnTo,
+  defaults,
 }: {
   action: (fd: FormData) => Promise<void>;
   addresses: string[];
   recipientType: string;
   sharingOn: boolean;
   province: string;
+  recipients: Recipient[];
+  mailOn: boolean;
+  returnTo: string;
+  defaults?: AttemptDefaults;
 }) {
+  const editing = Boolean(defaults);
   const ns = province === "Nova Scotia";
   const outcomes = OUTCOMES.map((o) =>
     ns && o.value === "SUBSTITUTED" ? { ...o, label: "Substituted (per court order)" }
     : ns && o.value === "POSTED" ? { ...o, label: "Posted (per court order)" }
     : o
   );
-  const [outcome, setOutcome] = useState("");
+  const addrList = defaults && !addresses.includes(defaults.address) ? [defaults.address, ...addresses] : addresses;
+  const [outcome, setOutcome] = useState(defaults?.outcome ?? "");
+  const [addr, setAddr] = useState(defaults?.address ?? addrList[0]);
   const [gps, setGps] = useState<Gps>(null);
-  const [gpsMsg, setGpsMsg] = useState("Getting location…");
+  const [gpsMsg, setGpsMsg] = useState(editing ? "" : "Getting location…");
   const [photos, setPhotos] = useState<File[]>([]);
+  const previews = useMemo(() => photos.map((p) => URL.createObjectURL(p)), [photos]);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   const fileInput = useRef<HTMLInputElement>(null);
   const served = outcomes.find((o) => o.value === outcome)?.served;
+  const d = (k: keyof AttemptDefaults) => (defaults ? String(defaults[k] ?? "") : "");
 
   const locate = () => {
     if (!("geolocation" in navigator)) return setGpsMsg("GPS not available on this device");
@@ -80,7 +107,11 @@ export default function AttemptForm({
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   };
-  useEffect(locate, []);
+  useEffect(() => {
+    if (!editing) locate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
 
   const addPhotos = async (list: FileList | null) => {
     if (!list) return;
@@ -94,6 +125,7 @@ export default function AttemptForm({
     setError("");
     if (!outcome) return setError("Choose an outcome.");
     const fd = new FormData(e.currentTarget);
+    if (fd.get("address") === "__new" && !String(fd.get("newAddress") ?? "").trim()) return setError("Enter the new address.");
     fd.delete("photos");
     photos.forEach((p) => fd.append("photos", p));
     const local = fd.get("attemptedAtLocal") as string;
@@ -115,6 +147,7 @@ export default function AttemptForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <input type="hidden" name="returnTo" value={returnTo} />
       <section className="card space-y-3">
         <div className="label">Outcome *</div>
         <div className="grid grid-cols-2 gap-2">
@@ -134,48 +167,56 @@ export default function AttemptForm({
           ))}
         </div>
         <input type="hidden" name="outcome" value={outcome} />
-      </section>
-
-      <section className="card space-y-3">
         <div>
           <label className="label">Date &amp; time</label>
-          <input className="input" type="datetime-local" name="attemptedAtLocal" defaultValue={nowLocal()} />
+          <input className="input" type="datetime-local" name="attemptedAtLocal" defaultValue={toLocalInput(defaults ? new Date(defaults.attemptedAt) : new Date())} />
         </div>
-        <div>
-          <label className="label">Address attended</label>
-          <select className="input" name="address" defaultValue={addresses[0]}>
-            {addresses.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center justify-between rounded-lg bg-slate-50 p-3 text-sm">
-          {gps ? (
-            <span>📍 {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)} <span className="muted">±{Math.round(gps.acc)} m</span></span>
-          ) : (
-            <span className="text-slate-600">{gpsMsg}</span>
-          )}
-          <button type="button" className="text-indigo-700" onClick={locate}>Refresh</button>
-        </div>
+      </section>
+
+      <section className="card space-y-2">
+        <h2 className="h2">Service address</h2>
+        {addrList.map((a) => (
+          <label key={a} className="flex items-start gap-2 py-1 text-sm">
+            <input type="radio" name="address" value={a} checked={addr === a} onChange={() => setAddr(a)} className="mt-0.5 h-5 w-5" />
+            {a}
+          </label>
+        ))}
+        <label className="flex items-center gap-2 py-1 text-sm">
+          <input type="radio" name="address" value="__new" checked={addr === "__new"} onChange={() => setAddr("__new")} className="h-5 w-5" />
+          Add new address
+        </label>
+        {addr === "__new" && <input className="input" name="newAddress" placeholder="Street, community, NS postal code" autoFocus />}
+        {!editing && (
+          <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 p-3 text-sm">
+            {gps ? (
+              <span>📍 {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)} <span className="muted">±{Math.round(gps.acc)} m</span></span>
+            ) : (
+              <span className="text-slate-600">{gpsMsg}</span>
+            )}
+            <button type="button" className="text-indigo-700" onClick={locate}>Refresh</button>
+          </div>
+        )}
       </section>
 
       {served && (
         <section className="card space-y-3">
           <div>
             <label className="label">Name of person served</label>
-            <input className="input" name="personServed" placeholder={outcome === "PERSONAL" ? "Recipient's name" : "Name given"} />
+            <input className="input" name="personServed" defaultValue={d("personServed")} placeholder={outcome === "PERSONAL" ? "Recipient's name" : "Name given"} />
           </div>
           {outcome !== "PERSONAL" && (
             <div>
               <label className="label">{outcome === "CORPORATE" || recipientType !== "INDIVIDUAL" ? "Title / position" : "Relationship to recipient"}</label>
-              <input className="input" name="relationship" placeholder={outcome === "CORPORATE" ? "Office manager" : "Spouse, adult son…"} />
+              <input className="input" name="relationship" defaultValue={d("relationship")} placeholder={outcome === "CORPORATE" ? "Office manager" : "Spouse, adult son…"} />
             </div>
           )}
           <div>
             <label className="label">Physical description</label>
-            <input className="input" name="personDescription" placeholder="Male, approx. 45, 5'10&quot;, brown hair, glasses" />
+            <input className="input" name="personDescription" defaultValue={d("personDescription")} placeholder="Male, approx. 45, 5'10&quot;, brown hair, glasses" />
           </div>
           <div>
             <label className="label">How did you know it was the right person?</label>
-            <input className="input" name="identifiedBy" list="id-methods" placeholder="Confirmed name when asked" />
+            <input className="input" name="identifiedBy" defaultValue={d("identifiedBy")} list="id-methods" placeholder="Confirmed name when asked" />
             <datalist id="id-methods">
               <option value="The person confirmed their name when I asked" />
               <option value="The person matched a photograph provided by the client" />
@@ -195,30 +236,36 @@ export default function AttemptForm({
       <section className="card space-y-3">
         <div>
           <label className="label">Notes</label>
-          <textarea className="input" name="notes" rows={3} placeholder="Car in driveway, lights on, no answer…" />
+          <textarea className="input" name="notes" rows={3} defaultValue={d("notes")} placeholder="Car in driveway, lights on, no answer…" />
         </div>
         <div>
-          <label className="label">Photos</label>
+          <label className="label">Attempt uploads{editing ? " (adds to existing)" : ""}</label>
           <input ref={fileInput} className="hidden" type="file" accept="image/*" capture="environment" multiple onChange={(e) => addPhotos(e.target.files)} />
           <div className="flex flex-wrap gap-2">
-            {photos.map((p, i) => (
-              <div key={i} className="relative">
+            {previews.map((src, i) => (
+              <div key={src} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={URL.createObjectURL(p)} alt="" className="h-20 w-20 rounded-md border object-cover" />
+                <img src={src} alt="" className="h-20 w-20 rounded-md border object-cover" />
                 <button type="button" onClick={() => setPhotos((ps) => ps.filter((_, j) => j !== i))} className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-rose-600 text-xs text-white">×</button>
               </div>
             ))}
             <button type="button" className="flex h-20 w-20 items-center justify-center rounded-md border-2 border-dashed border-slate-300 text-2xl text-slate-400" onClick={() => fileInput.current?.click()}>📷</button>
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="shareWithClient" defaultChecked className="h-5 w-5" />
-          Share with client {sharingOn ? "(live tracking)" : "(tracking is off for this job)"}
+      </section>
+
+      <section className="card space-y-3">
+        <h2 className="h2">Email &amp; share</h2>
+        <p className="muted">Tick anyone who should get an emailed copy when you save. Nothing is emailed if nothing is ticked.</p>
+        <EmailShare recipients={recipients} mailOn={mailOn} />
+        <label className="flex items-center gap-2 border-t border-slate-100 pt-3 text-sm">
+          <input type="checkbox" name="shareWithClient" defaultChecked={defaults ? defaults.shareWithClient : true} className="h-5 w-5" />
+          Show on the client&apos;s live tracking page {sharingOn ? "" : "(tracking is off for this job)"}
         </label>
       </section>
 
       {error && <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-      <button className="btn-primary w-full py-4 text-lg" disabled={pending}>{pending ? "Saving…" : "Save attempt"}</button>
+      <button className="btn-primary w-full py-4 text-lg" disabled={pending}>{pending ? "Saving…" : editing ? "Save changes" : "Save attempt"}</button>
     </form>
   );
 }

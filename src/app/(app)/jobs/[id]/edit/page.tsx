@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 import { updateJobAction } from "@/app/actions";
 import { jobNo } from "@/lib/labels";
 import JobForm from "@/components/JobForm";
 import { jobToFormValues } from "@/lib/jobForm";
 
 export default async function EditJobPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requireStaff();
   const { id } = await params;
   const [job, clients, servers] = await Promise.all([
     prisma.job.findUnique({ where: { id } }),

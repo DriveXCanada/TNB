@@ -9,6 +9,7 @@ datasource db {
 
 enum Role {
   ADMIN
+  MANAGER
   SERVER
 }
 
@@ -56,6 +57,7 @@ model User {
   createdAt    DateTime  @default(now())
   sessions     Session[]
   jobs         Job[]     @relation("AssignedServer")
+  createdJobs  Job[]     @relation("CreatedBy")
   attempts     Attempt[]
 }
 
@@ -111,6 +113,9 @@ model Job {
   server               User?      @relation("AssignedServer", fields: [serverId], references: [id], onDelete: SetNull)
   trackingToken        String     @unique
   trackingEnabled      Boolean    @default(true)
+  archived             Boolean    @default(false)
+  createdById          String?
+  createdBy            User?      @relation("CreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   servedAt             DateTime?
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt

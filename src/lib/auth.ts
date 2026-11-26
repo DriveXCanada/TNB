@@ -53,13 +53,27 @@ export async function requireUser() {
   return user;
 }
 
+/** Master account only: team, settings. */
 export async function requireAdmin() {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/field");
+  if (user.role !== "ADMIN") redirect(isStaff(user) ? "/" : "/jobs");
   return user;
 }
 
-/** Servers may only touch jobs assigned to them; admins can touch any job. */
-export function canAccessJob(user: User, job: { serverId: string | null }) {
-  return user.role === "ADMIN" || job.serverId === user.id;
+/** Master account or managers: can see and manage every job and client. */
+export async function requireStaff() {
+  const user = await requireUser();
+  if (!isStaff(user)) redirect("/jobs");
+  return user;
 }
+
+export function isStaff(user: Pick<User, "role">) {
+  return user.role === "ADMIN" || user.role === "MANAGER";
+}
+
+/** Servers may only see jobs assigned to them; the master account and managers see every job. */
+export function canAccessJob(user: User, job: { serverId: string | null }) {
+  return isStaff(user) || job.serverId === user.id;
+}
+
+export const ROLE_LABEL = { ADMIN: "Master", MANAGER: "Manager", SERVER: "Process server" } as const;

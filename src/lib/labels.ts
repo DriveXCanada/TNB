@@ -44,8 +44,13 @@ export function isServedOutcome(o: AttemptOutcome) {
 export function fmtDateTime(d: Date | string | null | undefined) {
   if (!d) return "";
   return new Date(d).toLocaleString("en-CA", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
     timeZone: process.env.APP_TIMEZONE || "America/Halifax",
   });
 }

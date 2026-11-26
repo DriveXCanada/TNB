@@ -1,18 +1,20 @@
 import Link from "next/link";
 import type { Prisma, JobStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { isStaff, requireUser } from "@/lib/auth";
 import { fmtDate, jobNo, STATUS_LABEL } from "@/lib/labels";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
 export default async function JobsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  await requireAdmin();
+  const user = await requireUser();
+  const staff = isStaff(user);
   const sp = await searchParams;
-  const where: Prisma.JobWhereInput = {};
+  const where: Prisma.JobWhereInput = { archived: sp.status === "archived" };
+  if (!staff) where.serverId = user.id;
   if (sp.status === "open") where.status = { in: ["PENDING", "IN_PROGRESS"] };
   else if (sp.status && sp.status in STATUS_LABEL) where.status = sp.status as JobStatus;
-  if (sp.server === "none") where.serverId = null;
-  else if (sp.server) where.serverId = sp.server;
+  if (staff && sp.server === "none") where.serverId = null;
+  else if (staff && sp.server) where.serverId = sp.server;
   if (sp.q) {
     const q = sp.q.trim();
     const n = Number(q.replace(/^J-?/i, ""));
@@ -40,8 +42,8 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="h1">Jobs</h1>
-        <Link href="/jobs/new" className="btn-primary">+ New job</Link>
+        <h1 className="h1">{staff ? "Jobs" : "My jobs"}</h1>
+        {staff && <Link href="/jobs/new" className="btn-primary">+ New job</Link>}
       </div>
       <form className="card grid gap-3 sm:grid-cols-4">
         <input className="input sm:col-span-2" name="q" placeholder="Search name, plaintiff, defendant, address, job #, case #…" defaultValue={sp.q} />
@@ -49,9 +51,10 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           <option value="">All statuses</option>
           <option value="open">Open (pending + in progress)</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <option value="archived">Archived</option>
         </select>
         <div className="flex gap-2">
-          <select className="input" name="server" defaultValue={sp.server ?? ""}>
+          <select className={`input ${staff ? "" : "hidden"}`} name="server" defaultValue={sp.server ?? ""}>
             <option value="">All servers</option>
             <option value="none">Unassigned</option>
             {servers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -72,7 +75,8 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
               <tr key={j.id} className="hover:bg-slate-50">
                 <td className="td whitespace-nowrap"><Link href={`/jobs/${j.id}`} className="font-medium text-indigo-700">{jobNo(j.number)}</Link></td>
                 <td className="td">
-                  <Link href={`/jobs/${j.id}`} className="font-medium">{j.recipientName}</Link>
+                  <Link href={`/jobs/${j.id}`} className="font-medium text-indigo-700">{j.recipientName}</Link>
+                  {j.courtFileNumber && <span className="muted"> · {j.courtFileNumber}</span>}
                   <div className="muted max-w-xs truncate">{j.address}</div>
                 </td>
                 <td className="td hidden md:table-cell">{j.client?.name ?? "—"}<div className="muted">{j.clientReference}</div></td>
