@@ -26,7 +26,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: P
       <div>
         <div className="muted"><a className="underline" href={`/jobs/${job.id}`}>{jobNo(job.number)}</a>{job.dueDate && ` · due ${fmtDate(job.dueDate)}`}</div>
         <h1 className="h1">{job.recipientName}</h1>
-        <div className="mt-1 flex gap-2"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div>
+        <div className="mt-1 flex gap-2"><StatusBadge status={job.status} attempts={job.attempts.length} /><PriorityBadge priority={job.priority} /></div>
       </div>
 
       <Link href={`/field/${job.id}/attempt?from=field`} className="btn-primary w-full py-4 text-lg">+ Log attempt</Link>

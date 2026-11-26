@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 import { getSettings } from "./settings";
-import { OUTCOME_LABEL, STATUS_LABEL, isServedOutcome, jobNo } from "./labels";
+import { OUTCOME_LABEL, statusText, isServedOutcome, jobNo } from "./labels";
 
 export type TrackingData = Awaited<ReturnType<typeof getTrackingData>>;
 
@@ -27,7 +27,7 @@ export async function getTrackingData(token: string) {
       recipientName: job.recipientName,
       address: job.address,
       status: job.status,
-      statusLabel: STATUS_LABEL[job.status],
+      statusLabel: statusText(job.status, job.attempts.length),
       clientName: job.client?.name ?? null,
       clientReference: job.clientReference,
       courtFileNumber: job.courtFileNumber,

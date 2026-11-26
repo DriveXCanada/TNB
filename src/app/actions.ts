@@ -214,12 +214,20 @@ function attemptData(fd: FormData, fallbackAddress: string) {
     address: addr === "__new" ? (str(fd, "newAddress") ?? fallbackAddress) : (addr ?? fallbackAddress),
     outcome: req(fd, "outcome") as AttemptOutcome,
     personServed: str(fd, "personServed"),
-    relationship: str(fd, "relationship"),
+    ...(fd.has("relationship") ? { relationship: str(fd, "relationship") } : {}),
     personDescription: str(fd, "personDescription"),
     identifiedBy: str(fd, "identifiedBy"),
     notes: str(fd, "notes"),
     shareWithClient: fd.get("shareWithClient") === "on",
   };
+}
+
+/** Staff can record an attempt for any active team member; servers always record their own. */
+async function pickServer(user: { id: string; role: string }, fd: FormData) {
+  const chosen = str(fd, "serverId");
+  if (!chosen || !isStaff(user as never) || chosen === user.id) return user.id;
+  const exists = await prisma.user.findFirst({ where: { id: chosen, active: true } });
+  return exists ? chosen : user.id;
 }
 
 function returnPath(fd: FormData, jobId: string) {
@@ -249,7 +257,7 @@ export async function createAttemptAction(jobId: string, fd: FormData) {
     data: {
       ...attemptData(fd, job.address),
       jobId,
-      serverId: user.id,
+      serverId: await pickServer(user, fd),
       latitude: n("latitude"),
       longitude: n("longitude"),
       gpsAccuracy: n("gpsAccuracy"),
@@ -265,7 +273,10 @@ export async function updateAttemptAction(attemptId: string, fd: FormData) {
   const user = await requireUser();
   const a = await prisma.attempt.findUniqueOrThrow({ where: { id: attemptId }, include: { job: true } });
   if (!canAccessJob(user, a.job) || (!isStaff(user) && a.serverId !== user.id)) throw new Error("Not allowed");
-  await prisma.attempt.update({ where: { id: attemptId }, data: attemptData(fd, a.address) });
+  await prisma.attempt.update({
+    where: { id: attemptId },
+    data: { ...attemptData(fd, a.address), ...(isStaff(user) ? { serverId: await pickServer(user, fd) } : {}) },
+  });
   await storeUploads(files(fd, "photos"), "PHOTO", { attemptId, jobId: a.jobId });
   await syncJobStatus(a.jobId);
   await emailAttempt(attemptId, chosenRecipients(fd));

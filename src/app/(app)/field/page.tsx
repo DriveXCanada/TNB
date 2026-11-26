@@ -36,7 +36,7 @@ export default async function FieldPage({ searchParams }: { searchParams: Promis
                   <div className="text-lg font-semibold">{j.recipientName}</div>
                   <div className="text-sm text-slate-600">{j.address}</div>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1"><StatusBadge status={j.status} /><PriorityBadge priority={j.priority} /></div>
+                <div className="flex shrink-0 flex-col items-end gap-1"><StatusBadge status={j.status} attempts={j._count.attempts} /><PriorityBadge priority={j.priority} /></div>
               </div>
               <div className="muted mt-2">
                 {jobNo(j.number)} · {j._count.attempts} attempt{j._count.attempts === 1 ? "" : "s"}

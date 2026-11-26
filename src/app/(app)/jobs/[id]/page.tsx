@@ -5,7 +5,7 @@ import { canAccessJob, isStaff, requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { appUrl } from "@/lib/mail";
 import { jobAddresses } from "@/lib/jobAddresses";
-import { fmtDate, fmtDateTime, isServedOutcome, jobNo, OUTCOME_LABEL, STATUS_LABEL } from "@/lib/labels";
+import { fmtDate, fmtDateTime, isServedOutcome, jobNo, OUTCOME_LABEL, STATUS_LABEL, statusText } from "@/lib/labels";
 import {
   assignServerAction,
   deleteAttemptAction,
@@ -85,7 +85,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             <h1 className="text-3xl font-bold">{jobNo(job.number)}</h1>
             {job.courtFileNumber && <span className="badge bg-slate-100 text-slate-700">{job.courtFileNumber}</span>}
             <span className="badge bg-slate-100 text-slate-700">{n} Attempt{n === 1 ? "" : "s"}</span>
-            <StatusBadge status={job.status} />
+            {(job.status === "SERVED" || job.status === "NON_SERVICE" || job.status === "CANCELLED") && <StatusBadge status={job.status} />}
             <PriorityBadge priority={job.priority} />
           </div>
         </div>
@@ -131,7 +131,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
           )}
         </div>
         <dl>
-          <Field label="Status">{n} Attempt{n === 1 ? "" : "s"} · {STATUS_LABEL[job.status]}</Field>
+          <Field label="Status"><span className={job.status === "SERVED" ? "font-semibold text-emerald-700" : ""}>{statusText(job.status, n)}</span></Field>
           <Field label="Attempt due"><span className={job.dueDate && job.dueDate < new Date() && job.status !== "SERVED" ? "font-semibold text-rose-600" : ""}>{fmtDate(job.dueDate) || "—"}</span></Field>
           <Field label="Court date">{fmtDate(job.courtDate) || "—"}</Field>
           {job.servedAt && <Field label="Served">{fmtDateTime(job.servedAt)}</Field>}

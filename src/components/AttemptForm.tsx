@@ -1,28 +1,46 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import EmailShare from "./EmailShare";
 import type { Recipient } from "@/lib/recipients";
 
-const OUTCOMES: { value: string; label: string; served?: boolean }[] = [
-  { value: "PERSONAL", label: "Personal service", served: true },
-  { value: "SUBSTITUTED", label: "Substituted (adult at home)", served: true },
-  { value: "CORPORATE", label: "Corporate (officer/manager)", served: true },
-  { value: "POSTED", label: "Posted / left at door", served: true },
-  { value: "NOT_HOME", label: "No answer / not home" },
-  { value: "REFUSED", label: "Refused" },
-  { value: "BAD_ADDRESS", label: "Bad address" },
-  { value: "MOVED", label: "Moved" },
-  { value: "EVADING", label: "Evading" },
-  { value: "OTHER", label: "Other" },
+const SERVICE_TYPES = [
+  { value: "PERSONAL", label: "Personal Service" },
+  { value: "UNSUCCESSFUL", label: "Unsuccessful" },
+  { value: "BAD_ADDRESS", label: "Bad Address" },
 ];
+
+const DESCRIPTIONS: Record<string, string[]> = {
+  PERSONAL: [
+    "Served the recipient personally",
+    "Recipient confirmed identity and accepted the documents",
+    "Recipient refused to take the documents; left them in their presence",
+  ],
+  UNSUCCESSFUL: [
+    "No answer at the door",
+    "No answer – lights on inside",
+    "No answer – vehicle in driveway",
+    "Occupant states recipient is not home",
+    "Occupant would not say when recipient will be home",
+    "Gated / no access to the residence",
+    "Left a card in the door",
+  ],
+  BAD_ADDRESS: [
+    "Recipient unknown at this address",
+    "Current occupant states recipient moved",
+    "Residence is vacant",
+    "Address does not exist",
+    "Business closed / no longer at this location",
+  ],
+};
 
 export type AttemptDefaults = {
   outcome: string;
   attemptedAt: string; // ISO
   address: string;
+  serverId: string;
   personServed: string;
-  relationship: string;
   personDescription: string;
   identifiedBy: string;
   notes: string;
@@ -54,45 +72,53 @@ async function resizeImage(file: File, max = 1600, quality = 0.8): Promise<File>
   }
 }
 
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-1 sm:grid-cols-[9rem_1fr] sm:items-start sm:gap-4">
+      <div className="pt-2 text-sm font-medium text-slate-700">{label}</div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
 export default function AttemptForm({
   action,
   addresses,
-  recipientType,
-  sharingOn,
-  province,
   recipients,
   mailOn,
   returnTo,
+  servers,
+  currentUserId,
+  canChooseServer,
+  sharingOn,
   defaults,
 }: {
   action: (fd: FormData) => Promise<void>;
   addresses: string[];
-  recipientType: string;
-  sharingOn: boolean;
-  province: string;
   recipients: Recipient[];
   mailOn: boolean;
   returnTo: string;
+  servers: { id: string; name: string }[];
+  currentUserId: string;
+  canChooseServer: boolean;
+  sharingOn: boolean;
   defaults?: AttemptDefaults;
 }) {
   const editing = Boolean(defaults);
-  const ns = province === "Nova Scotia";
-  const outcomes = OUTCOMES.map((o) =>
-    ns && o.value === "SUBSTITUTED" ? { ...o, label: "Substituted (per court order)" }
-    : ns && o.value === "POSTED" ? { ...o, label: "Posted (per court order)" }
-    : o
-  );
   const addrList = defaults && !addresses.includes(defaults.address) ? [defaults.address, ...addresses] : addresses;
+  const typeKnown = SERVICE_TYPES.some((t) => t.value === defaults?.outcome);
   const [outcome, setOutcome] = useState(defaults?.outcome ?? "");
   const [addr, setAddr] = useState(defaults?.address ?? addrList[0]);
+  const [notes, setNotes] = useState(defaults?.notes ?? "");
+  const [desc, setDesc] = useState("");
   const [gps, setGps] = useState<Gps>(null);
+  const [useGps, setUseGps] = useState(!editing);
   const [gpsMsg, setGpsMsg] = useState(editing ? "" : "Getting location…");
   const [photos, setPhotos] = useState<File[]>([]);
   const previews = useMemo(() => photos.map((p) => URL.createObjectURL(p)), [photos]);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   const fileInput = useRef<HTMLInputElement>(null);
-  const served = outcomes.find((o) => o.value === outcome)?.served;
   const d = (k: keyof AttemptDefaults) => (defaults ? String(defaults[k] ?? "") : "");
 
   const locate = () => {
@@ -113,6 +139,13 @@ export default function AttemptForm({
   }, []);
   useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
 
+  const addDescription = (text: string) => {
+    const t = text.trim();
+    if (!t) return;
+    setNotes((n) => (n.trim() ? `${n.trim()}\n${t}` : t));
+    setDesc("");
+  };
+
   const addPhotos = async (list: FileList | null) => {
     if (!list) return;
     const resized = await Promise.all(Array.from(list).map((f) => resizeImage(f)));
@@ -123,14 +156,15 @@ export default function AttemptForm({
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    if (!outcome) return setError("Choose an outcome.");
+    if (!outcome) return setError("Choose a service type.");
     const fd = new FormData(e.currentTarget);
     if (fd.get("address") === "__new" && !String(fd.get("newAddress") ?? "").trim()) return setError("Enter the new address.");
+    if (desc.trim()) fd.set("notes", notes.trim() ? `${notes.trim()}\n${desc.trim()}` : desc.trim());
     fd.delete("photos");
     photos.forEach((p) => fd.append("photos", p));
     const local = fd.get("attemptedAtLocal") as string;
     fd.set("attemptedAt", local ? new Date(local).toISOString() : new Date().toISOString());
-    if (gps) {
+    if (gps && useGps) {
       fd.set("latitude", String(gps.lat));
       fd.set("longitude", String(gps.lng));
       fd.set("gpsAccuracy", String(gps.acc));
@@ -148,33 +182,83 @@ export default function AttemptForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <input type="hidden" name="returnTo" value={returnTo} />
-      <section className="card space-y-3">
-        <div className="label">Outcome *</div>
-        <div className="grid grid-cols-2 gap-2">
-          {outcomes.map((o) => (
-            <button
-              type="button"
-              key={o.value}
-              onClick={() => setOutcome(o.value)}
-              className={`rounded-lg border px-3 py-3 text-left text-sm font-medium transition ${
-                outcome === o.value
-                  ? o.served ? "border-emerald-600 bg-emerald-600 text-white" : "border-amber-500 bg-amber-500 text-white"
-                  : "border-slate-300 bg-white"
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-        <input type="hidden" name="outcome" value={outcome} />
-        <div>
-          <label className="label">Date &amp; time</label>
-          <input className="input" type="datetime-local" name="attemptedAtLocal" defaultValue={toLocalInput(defaults ? new Date(defaults.attemptedAt) : new Date())} />
-        </div>
+      <input type="hidden" name="outcome" value={outcome} />
+
+      <section className="card space-y-4">
+        <h2 className="h2">Details</h2>
+        <Row label="Process Server">
+          {canChooseServer ? (
+            <select className="input" name="serverId" defaultValue={d("serverId") || currentUserId}>
+              {servers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          ) : (
+            <div className="input bg-slate-50">{servers.find((s) => s.id === (d("serverId") || currentUserId))?.name}</div>
+          )}
+        </Row>
+        <Row label="Date & Time">
+          <input
+            className="input"
+            type="datetime-local"
+            name="attemptedAtLocal"
+            defaultValue={toLocalInput(defaults ? new Date(defaults.attemptedAt) : new Date())}
+            onChange={() => !editing && setUseGps(false)}
+          />
+          {!editing && <p className="text-xs text-slate-500">Filled in with the current time. Change it if you&apos;re logging this later.</p>}
+        </Row>
+        <Row label="Service Type">
+          <select className="input" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
+            <option value="">— Select —</option>
+            {!typeKnown && defaults && <option value={defaults.outcome}>{defaults.outcome.replace(/_/g, " ").toLowerCase()} (older type)</option>}
+            {SERVICE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </Row>
+        <Row label="Desc. of Service">
+          <div className="flex gap-2">
+            <input
+              className="input"
+              list="service-desc"
+              value={desc}
+              placeholder="— Select or type —"
+              onChange={(e) => {
+                const v = e.target.value;
+                if ((DESCRIPTIONS[outcome] ?? []).includes(v)) addDescription(v);
+                else setDesc(v);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addDescription(desc);
+                }
+              }}
+            />
+            {desc.trim() && <button type="button" className="btn-secondary" onClick={() => addDescription(desc)}>Add</button>}
+          </div>
+          <datalist id="service-desc">{(DESCRIPTIONS[outcome] ?? Object.values(DESCRIPTIONS).flat()).map((x) => <option key={x} value={x} />)}</datalist>
+          <textarea className="input" name="notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Details of the attempt…" />
+        </Row>
+        {outcome === "PERSONAL" && (
+          <>
+            <Row label="Person served">
+              <input className="input" name="personServed" defaultValue={d("personServed")} placeholder="Name of the person you handed the documents to" />
+            </Row>
+            <Row label="Physical description">
+              <input className="input" name="personDescription" defaultValue={d("personDescription")} placeholder="Male, approx. 45, 5'10&quot;, brown hair, glasses" />
+            </Row>
+            <Row label="How identified">
+              <input className="input" name="identifiedBy" defaultValue={d("identifiedBy")} list="id-methods" placeholder="How did you know it was the right person?" />
+              <datalist id="id-methods">
+                <option value="The person confirmed their name when I asked" />
+                <option value="The person matched a photograph provided by the client" />
+                <option value="The person produced photo identification" />
+                <option value="The person is known to me" />
+              </datalist>
+            </Row>
+          </>
+        )}
       </section>
 
       <section className="card space-y-2">
-        <h2 className="h2">Service address</h2>
+        <h2 className="h2">Service Address</h2>
         {addrList.map((a) => (
           <label key={a} className="flex items-start gap-2 py-1 text-sm">
             <input type="radio" name="address" value={a} checked={addr === a} onChange={() => setAddr(a)} className="mt-0.5 h-5 w-5" />
@@ -187,75 +271,43 @@ export default function AttemptForm({
         </label>
         {addr === "__new" && <input className="input" name="newAddress" placeholder="Street, community, NS postal code" autoFocus />}
         {!editing && (
-          <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 p-3 text-sm">
-            {gps ? (
-              <span>📍 {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)} <span className="muted">±{Math.round(gps.acc)} m</span></span>
-            ) : (
-              <span className="text-slate-600">{gpsMsg}</span>
-            )}
-            <button type="button" className="text-indigo-700" onClick={locate}>Refresh</button>
+          <div className="mt-2 rounded-lg bg-slate-50 p-3 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={useGps} onChange={(e) => setUseGps(e.target.checked)} className="h-5 w-5" />
+              <span className="flex-1">
+                Record my current location{" "}
+                {gps ? <span className="muted">({gps.lat.toFixed(5)}, {gps.lng.toFixed(5)} ±{Math.round(gps.acc)} m)</span> : <span className="muted">({gpsMsg})</span>}
+              </span>
+              <button type="button" className="text-indigo-700" onClick={locate}>Refresh</button>
+            </label>
+            <p className="mt-1 text-xs text-slate-500">Untick this if you&apos;re logging the attempt later, away from the address.</p>
           </div>
         )}
       </section>
 
-      {served && (
-        <section className="card space-y-3">
-          <div>
-            <label className="label">Name of person served</label>
-            <input className="input" name="personServed" defaultValue={d("personServed")} placeholder={outcome === "PERSONAL" ? "Recipient's name" : "Name given"} />
-          </div>
-          {outcome !== "PERSONAL" && (
-            <div>
-              <label className="label">{outcome === "CORPORATE" || recipientType !== "INDIVIDUAL" ? "Title / position" : "Relationship to recipient"}</label>
-              <input className="input" name="relationship" defaultValue={d("relationship")} placeholder={outcome === "CORPORATE" ? "Office manager" : "Spouse, adult son…"} />
-            </div>
-          )}
-          <div>
-            <label className="label">Physical description</label>
-            <input className="input" name="personDescription" defaultValue={d("personDescription")} placeholder="Male, approx. 45, 5'10&quot;, brown hair, glasses" />
-          </div>
-          <div>
-            <label className="label">How did you know it was the right person?</label>
-            <input className="input" name="identifiedBy" defaultValue={d("identifiedBy")} list="id-methods" placeholder="Confirmed name when asked" />
-            <datalist id="id-methods">
-              <option value="The person confirmed their name when I asked" />
-              <option value="The person matched a photograph provided by the client" />
-              <option value="The person produced photo identification" />
-              <option value="The person is known to me" />
-              <option value="The person identified themself as an officer of the corporation" />
-            </datalist>
-          </div>
-          {ns && (outcome === "SUBSTITUTED" || outcome === "POSTED") && (
-            <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">
-              In Nova Scotia, an originating document must be delivered to an individual personally unless a judge has ordered substituted notice (Rule 31.10). Use this only if there is an order.
-            </p>
-          )}
-        </section>
-      )}
-
-      <section className="card space-y-3">
-        <div>
-          <label className="label">Notes</label>
-          <textarea className="input" name="notes" rows={3} defaultValue={d("notes")} placeholder="Car in driveway, lights on, no answer…" />
-        </div>
-        <div>
-          <label className="label">Attempt uploads{editing ? " (adds to existing)" : ""}</label>
-          <input ref={fileInput} className="hidden" type="file" accept="image/*" capture="environment" multiple onChange={(e) => addPhotos(e.target.files)} />
-          <div className="flex flex-wrap gap-2">
-            {previews.map((src, i) => (
-              <div key={src} className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+      <section className="card space-y-2">
+        <h2 className="h2">Attempt Uploads</h2>
+        <input ref={fileInput} className="hidden" type="file" accept="image/*,application/pdf" multiple onChange={(e) => addPhotos(e.target.files)} />
+        <div className="flex flex-wrap gap-2">
+          {previews.map((src, i) => (
+            <div key={src} className="relative">
+              {photos[i].type.startsWith("image/") ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={src} alt="" className="h-20 w-20 rounded-md border object-cover" />
-                <button type="button" onClick={() => setPhotos((ps) => ps.filter((_, j) => j !== i))} className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-rose-600 text-xs text-white">×</button>
-              </div>
-            ))}
-            <button type="button" className="flex h-20 w-20 items-center justify-center rounded-md border-2 border-dashed border-slate-300 text-2xl text-slate-400" onClick={() => fileInput.current?.click()}>📷</button>
-          </div>
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-md border p-1 text-center text-xs break-all">{photos[i].name}</div>
+              )}
+              <button type="button" onClick={() => setPhotos((ps) => ps.filter((_, j) => j !== i))} className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-rose-600 text-xs text-white">×</button>
+            </div>
+          ))}
+          <button type="button" className="flex h-20 min-w-20 flex-col items-center justify-center rounded-md border-2 border-dashed border-slate-300 px-3 text-sm text-slate-500" onClick={() => fileInput.current?.click()}>
+            <span className="text-2xl">📷</span>Select files
+          </button>
         </div>
       </section>
 
       <section className="card space-y-3">
-        <h2 className="h2">Email &amp; share</h2>
+        <h2 className="h2">Email &amp; Share</h2>
         <p className="muted">Tick anyone who should get an emailed copy when you save. Nothing is emailed if nothing is ticked.</p>
         <EmailShare recipients={recipients} mailOn={mailOn} />
         <label className="flex items-center gap-2 border-t border-slate-100 pt-3 text-sm">
@@ -265,7 +317,10 @@ export default function AttemptForm({
       </section>
 
       {error && <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-      <button className="btn-primary w-full py-4 text-lg" disabled={pending}>{pending ? "Saving…" : editing ? "Save changes" : "Save attempt"}</button>
+      <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border">
+        <button className="btn-primary flex-1 py-3 text-base sm:flex-none sm:px-8" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
+        <Link href={returnTo} className="btn-secondary py-3">Cancel</Link>
+      </div>
     </form>
   );
 }

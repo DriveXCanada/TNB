@@ -25,7 +25,7 @@ export default async function Dashboard() {
     prisma.attempt.findMany({
       orderBy: { createdAt: "desc" },
       take: 8,
-      include: { job: true, server: true },
+      include: { job: { include: { _count: { select: { attempts: true } } } }, server: true },
     }),
   ]);
 
@@ -82,7 +82,7 @@ export default async function Dashboard() {
                 <Link href={`/jobs/${a.jobId}`} className="block py-2.5 hover:bg-slate-50">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-medium">{a.job.recipientName}</span>
-                    <StatusBadge status={a.job.status} />
+                    <StatusBadge status={a.job.status} attempts={a.job._count.attempts} />
                   </div>
                   <div className="muted">{OUTCOME_LABEL[a.outcome]} · {a.server?.name ?? "—"} · {fmtDateTime(a.attemptedAt)}</div>
                 </Link>

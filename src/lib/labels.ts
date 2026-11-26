@@ -23,17 +23,31 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
 };
 
 export const OUTCOME_LABEL: Record<AttemptOutcome, string> = {
-  PERSONAL: "Served – personal service",
+  PERSONAL: "Personal Service",
+  UNSUCCESSFUL: "Unsuccessful",
   SUBSTITUTED: "Served – substituted (adult at residence)",
   CORPORATE: "Served – corporation (officer/manager)",
   POSTED: "Served – posted/left at address",
   NOT_HOME: "No answer / not home",
   REFUSED: "Refused to accept",
-  BAD_ADDRESS: "Bad address",
+  BAD_ADDRESS: "Bad Address",
   MOVED: "Recipient moved",
   EVADING: "Recipient evading",
   OTHER: "Other",
 };
+
+/** The service types offered when logging an attempt. Older types stay readable on past attempts. */
+export const SERVICE_TYPES: { value: AttemptOutcome; label: string }[] = [
+  { value: "PERSONAL", label: "Personal Service" },
+  { value: "UNSUCCESSFUL", label: "Unsuccessful" },
+  { value: "BAD_ADDRESS", label: "Bad Address" },
+];
+
+/** What a job's status reads as: "Served", or the number of attempts made so far. */
+export function statusText(status: JobStatus, attempts: number) {
+  if (status === "SERVED" || status === "NON_SERVICE" || status === "CANCELLED") return STATUS_LABEL[status];
+  return attempts === 0 ? "Pending" : `${attempts} Attempt${attempts === 1 ? "" : "s"}`;
+}
 
 export const SERVED_OUTCOMES: AttemptOutcome[] = ["PERSONAL", "SUBSTITUTED", "CORPORATE", "POSTED"];
 

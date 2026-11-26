@@ -82,7 +82,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                 <td className="td hidden md:table-cell">{j.client?.name ?? "—"}<div className="muted">{j.clientReference}</div></td>
                 <td className="td hidden md:table-cell">{j.server?.name ?? <span className="text-amber-700">Unassigned</span>}</td>
                 <td className="td whitespace-nowrap">{fmtDate(j.dueDate) || "—"} <PriorityBadge priority={j.priority} /></td>
-                <td className="td"><StatusBadge status={j.status} /><div className="muted">{j._count.attempts} attempt{j._count.attempts === 1 ? "" : "s"}</div></td>
+                <td className="td"><StatusBadge status={j.status} attempts={j._count.attempts} /></td>
               </tr>
             ))}
             {jobs.length === 0 && <tr><td className="td muted" colSpan={6}>No jobs found.</td></tr>}

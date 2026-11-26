@@ -29,6 +29,7 @@ enum Priority {
 
 enum AttemptOutcome {
   PERSONAL
+  UNSUCCESSFUL
   SUBSTITUTED
   CORPORATE
   POSTED
