@@ -38,7 +38,7 @@ On first visit, you’ll be asked to create the admin account.
    - `APP_TIMEZONE` = defaults to `America/Halifax`
    - Optional email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 5. Under **Settings → Networking**, click **Generate Domain**.
-6. Deploy. Migrations run automatically on start (`prisma migrate deploy`). Open the URL and create your admin account.
+6. Deploy. Migrations run automatically on start. The app keeps its tables in their own Postgres schema, `tnb`, so it works even if the database already has tables in `public` (which otherwise causes Prisma error P3005). Set `DB_SCHEMA` to use a different schema name. Open the URL and create your master account.
 
 Photos and documents are stored in the Postgres database, so no separate file storage is needed.
 
