@@ -90,8 +90,9 @@ function jobData(fd: FormData) {
     address: req(fd, "address"),
     altAddresses: str(fd, "altAddresses"),
     clientId: str(fd, "clientId"),
-    clientReference: str(fd, "clientReference"),
-    courtName: str(fd, "courtName"),
+    // Only update fields the form actually sends, so fields removed from the form keep their old values.
+    ...(fd.has("clientReference") ? { clientReference: str(fd, "clientReference") } : {}),
+    ...(fd.has("courtName") ? { courtName: str(fd, "courtName") } : {}),
     courtFileNumber: str(fd, "courtFileNumber"),
     courtCounty: str(fd, "courtCounty"),
     plaintiff: str(fd, "plaintiff"),

@@ -2,7 +2,7 @@ import type { Job } from "@prisma/client";
 
 export const NS_COUNTIES = [
   "Annapolis", "Antigonish", "Cape Breton", "Colchester", "Cumberland", "Digby", "Guysborough", "Halifax", "Hants",
-  "Inverness", "Kings", "Lunenburg", "Pictou", "Queens", "Richmond", "Shelburne", "Victoria", "Yarmouth",
+  "Inverness", "Kentville", "Kings", "Lunenburg", "Pictou", "Queens", "Richmond", "Shelburne", "Victoria", "Yarmouth",
 ];
 
 export type JobFormValues = Record<string, string>;

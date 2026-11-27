@@ -36,7 +36,7 @@ export default async function FieldSheetPage({ params }: { params: Promise<{ id:
           {r("Instructions", job.instructions)}
           {r("Plaintiff", job.plaintiff)}
           {r("Defendant", job.defendant)}
-          {r("Court", [job.courtName, job.courtCounty && `${job.courtCounty} County`].filter(Boolean).join(", "))}
+          {r("Court", [job.courtName, job.courtCounty].filter(Boolean).join(", "))}
           {r("Court date", fmtDate(job.courtDate))}
           {r("Attempt due", fmtDate(job.dueDate))}
           {r("Client", job.client && `${job.client.name}${job.clientReference ? ` (job no. ${job.clientReference})` : ""}`)}

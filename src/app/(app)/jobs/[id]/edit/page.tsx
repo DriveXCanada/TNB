@@ -18,7 +18,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="h1">Edit {jobNo(job.number)}</h1>
-      <JobForm action={updateJobAction.bind(null, id)} job={jobToFormValues(job)} clients={clients} servers={servers} defaultCourt="" />
+      <JobForm action={updateJobAction.bind(null, id)} job={jobToFormValues(job)} jobNumber={jobNo(job.number)} clients={clients} servers={servers} defaultCourt="" />
     </div>
   );
 }

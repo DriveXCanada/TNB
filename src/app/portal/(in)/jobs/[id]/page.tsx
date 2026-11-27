@@ -115,7 +115,7 @@ export default async function PortalJob({ params }: { params: Promise<{ id: stri
               <F label="Court case">{job.courtFileNumber}</F>
               <F label="Plaintiff">{job.plaintiff}</F>
               <F label="Defendant">{job.defendant}</F>
-              <F label="Court">{[job.courtName, job.courtCounty && `${job.courtCounty} County`].filter(Boolean).join(", ")}</F>
+              <F label="Court">{[job.courtName, job.courtCounty].filter(Boolean).join(", ")}</F>
               <F label="Court date">{fmtDate(job.courtDate)}</F>
               <F label="Address">{job.address}</F>
               <F label="Documents">{job.documentsServed}</F>

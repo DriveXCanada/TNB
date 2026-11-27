@@ -15,6 +15,7 @@ export default function JobForm({
   servers,
   defaultCourt,
   defaultServerId = "",
+  jobNumber,
 }: {
   action: (fd: FormData) => Promise<void>;
   job?: JobFormValues;
@@ -22,6 +23,8 @@ export default function JobForm({
   servers: ServerOpt[];
   defaultCourt: string;
   defaultServerId?: string;
+  /** Shown read-only; new jobs get the next number on save. */
+  jobNumber?: string;
 }) {
   const v = (k: string) => job?.[k] ?? "";
   const [clientId, setClientId] = useState(v("clientId"));
@@ -57,7 +60,10 @@ export default function JobForm({
             {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <div><label className="label">Client job number</label><input className="input" name="clientReference" defaultValue={v("clientReference")} /></div>
+        <div>
+          <label className="label">Job number</label>
+          <div className="input bg-slate-50 font-bold text-navy-800">{jobNumber ?? "Assigned automatically when you save"}</div>
+        </div>
         {client && (
           <div className="rounded-lg bg-slate-50 p-3 text-sm sm:col-span-2">
             <div className="font-medium">{client.name}</div>
@@ -73,7 +79,6 @@ export default function JobForm({
       <section className="card grid gap-4 sm:grid-cols-2">
         <h2 className="h2 sm:col-span-2">Court case</h2>
         <div><label className="label">Court case number</label><input className="input" name="courtFileNumber" defaultValue={v("courtFileNumber")} placeholder="Hfx No. 512345" /></div>
-        <div><label className="label">Court</label><input className="input" name="courtName" defaultValue={job ? v("courtName") : defaultCourt} placeholder="Supreme Court of Nova Scotia" /></div>
         <div>
           <label className="label">Plaintiff</label>
           <input className="input" name="plaintiff" value={plaintiff} onChange={(e) => { setPlaintiff(e.target.value); setPlaintiffTouched(true); }} placeholder="Filled in from the client" />
@@ -83,8 +88,11 @@ export default function JobForm({
         <div><label className="label">Court date</label><input className="input" type="date" name="courtDate" defaultValue={v("courtDate")} /></div>
         <div>
           <label className="label">Court county</label>
-          <input className="input" name="courtCounty" list="ns-counties" defaultValue={v("courtCounty")} placeholder="Halifax" />
-          <datalist id="ns-counties">{NS_COUNTIES.map((c) => <option key={c} value={c} />)}</datalist>
+          <select className="input" name="courtCounty" defaultValue={v("courtCounty")}>
+            <option value="">— Select —</option>
+            {v("courtCounty") && !NS_COUNTIES.includes(v("courtCounty")) && <option value={v("courtCounty")}>{v("courtCounty")}</option>}
+            {NS_COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
         <div className="sm:col-span-2"><label className="label">Documents to be served</label><textarea className="input" rows={2} name="documentsServed" defaultValue={v("documentsServed")} placeholder="Notice of Action and Statement of Claim" /></div>
         <div className="sm:col-span-2"><label className="label">Upload documents (PDF, images)</label><input className="input" type="file" name="documents" multiple /></div>
