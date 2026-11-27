@@ -1,0 +1,15 @@
+"use client";
+import { useActionState } from "react";
+import { portalLoginAction } from "../actions";
+
+export default function PortalLoginForm() {
+  const [state, action, pending] = useActionState(portalLoginAction, null);
+  return (
+    <form action={action} className="space-y-4">
+      <div><label className="label" htmlFor="email">Email</label><input className="input" id="email" name="email" type="email" autoComplete="email" required /></div>
+      <div><label className="label" htmlFor="password">Password</label><input className="input" id="password" name="password" type="password" autoComplete="current-password" required /></div>
+      {state?.error && <p className="text-sm text-rose-600">{state.error}</p>}
+      <button className="btn-accent w-full py-3 text-base" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
+    </form>
+  );
+}

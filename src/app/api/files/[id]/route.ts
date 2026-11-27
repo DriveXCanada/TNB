@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { canAccessJob, getCurrentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
+import { getPortalUser } from "@/lib/portalAuth";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,6 +16,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   let allowed = false;
   const user = await getCurrentUser();
   if (user && job) allowed = canAccessJob(user, job);
+
+  // Client portal: their own job's documents, and photos on attempts shared with them (if photos are enabled).
+  if (!allowed && job) {
+    const pu = await getPortalUser();
+    if (pu && job.clientId === pu.clientId) {
+      if (file.kind === "DOCUMENT" && !file.attemptId) allowed = true;
+      else if (file.attempt?.shareWithClient) allowed = (await getSettings()).sharePhotosWithClient === "true";
+    }
+  }
 
   // Public access via a client tracking link: only shared attempt photos, and only if enabled in settings.
   const token = req.nextUrl.searchParams.get("t");

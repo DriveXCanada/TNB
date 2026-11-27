@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { can, canAccessJob, requireUser } from "@/lib/auth";
-import { deleteAffidavitAction } from "@/app/actions";
+import { deleteAffidavitAction, toggleAffidavitClientAction } from "@/app/actions";
 import { fmtDateTime, jobNo } from "@/lib/labels";
 import AffidavitViewer from "@/components/AffidavitViewer";
 import ConfirmButton from "@/components/ConfirmButton";
@@ -13,7 +13,7 @@ export default async function AffidavitPage({ params, searchParams }: { params: 
   const sp = await searchParams;
   const a = await prisma.affidavit.findUnique({
     where: { id: afid },
-    select: { id: true, jobId: true, kind: true, createdAt: true, updatedAt: true, createdBy: { select: { name: true } }, job: true },
+    select: { id: true, jobId: true, kind: true, clientVisible: true, createdAt: true, updatedAt: true, createdBy: { select: { name: true } }, job: true },
   });
   if (!a || a.jobId !== id || !canAccessJob(user, a.job)) notFound();
   const title = a.kind === "SERVICE" ? "Affidavit of Service" : "Affidavit of Non-Service";
@@ -28,6 +28,13 @@ export default async function AffidavitPage({ params, searchParams }: { params: 
           <div className="muted">Saved {fmtDateTime(a.updatedAt)}{a.createdBy && ` · created by ${a.createdBy.name}`}</div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {can(user, "createAffidavits") && (
+            <form action={toggleAffidavitClientAction.bind(null, afid)}>
+              <button className={a.clientVisible ? "btn-secondary border-emerald-600 text-emerald-700" : "btn-secondary"}>
+                {a.clientVisible ? "✓ Visible in client portal" : "Hidden from client portal"}
+              </button>
+            </form>
+          )}
           {can(user, "createAffidavits") && <Link className="btn-secondary" href={`/jobs/${id}/affidavits/${afid}/edit`}>Edit</Link>}
           {can(user, "emailSharing") && <Link className="btn-secondary" href={`/jobs/${id}/affidavits/${afid}/share`}>Email</Link>}
           {can(user, "deleteAffidavits") && (

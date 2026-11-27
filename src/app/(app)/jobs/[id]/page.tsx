@@ -63,7 +63,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
         include: { server: true, files: { select: { id: true, filename: true, mimeType: true } } },
       },
       files: { where: { kind: "DOCUMENT" }, select: { id: true, filename: true } },
-      affidavits: { orderBy: { updatedAt: "desc" }, select: { id: true, kind: true, updatedAt: true, createdBy: { select: { name: true } } } },
+      affidavits: { orderBy: { updatedAt: "desc" }, select: { id: true, kind: true, updatedAt: true, clientVisible: true, createdBy: { select: { name: true } } } },
     },
   });
   if (!job || !canAccessJob(user, job)) notFound();
@@ -211,7 +211,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                           </div>
                         )}
                         <div className="flex flex-wrap gap-3 pt-1 text-xs">
-                          <span className={a.shareWithClient ? "text-emerald-700" : "text-slate-500"}>{a.shareWithClient ? "Visible on client tracking page" : "Hidden from client tracking page"}</span>
+                          <span className={a.shareWithClient ? "text-emerald-700" : "text-slate-500"}>{a.shareWithClient ? "Visible to client" : "Hidden from client"}</span>
                           {staff && <form action={toggleAttemptShareAction.bind(null, a.id, job.id)}><button className="font-semibold text-navy-600">{a.shareWithClient ? "Hide" : "Show"}</button></form>}
                           {can(user, "deleteAttempts") && <form action={deleteAttemptAction.bind(null, a.id, job.id)}><ConfirmButton className="text-rose-600" message="Delete this attempt?">Delete</ConfirmButton></form>}
                         </div>
@@ -233,6 +233,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                     <Link className="font-medium font-semibold text-navy-600" href={`/jobs/${job.id}/affidavits/${af.id}`}>
                       {af.kind === "SERVICE" ? "Affidavit of Service" : "Affidavit of Non-Service"}
                     </Link>
+                    {!af.clientVisible && <span className="badge bg-slate-200 text-slate-700">Hidden from client</span>}
                     <span className="flex items-center gap-3 text-xs text-slate-500">
                       {fmtDateTime(af.updatedAt)}{af.createdBy && ` · ${af.createdBy.name}`}
                       <a className="link" href={`/api/affidavits/${af.id}?download=1`}>Download</a>
@@ -246,7 +247,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
 
           {staff && (
             <Section title="Client live tracking" action={<span className={`badge ${job.trackingEnabled ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"}`}>{job.trackingEnabled ? "On" : "Off"}</span>}>
-              <p className="muted mb-2">A private page for your client that updates as attempts are logged. It shows only attempts marked visible.</p>
+              <p className="muted mb-2">A no-login page you can send to anyone; it shows only attempts marked visible. Clients with a portal login also see this job in their portal.</p>
               <input className="input mb-2 text-xs" readOnly value={trackUrl} />
               <div className="flex flex-wrap gap-2">
                 <CopyButton text={trackUrl} label="Copy link" />

@@ -318,7 +318,7 @@ export default function AttemptForm({
         )}
         <label className="flex items-center gap-2 border-t border-slate-100 pt-3 text-sm">
           <input type="checkbox" name="shareWithClient" defaultChecked={defaults ? defaults.shareWithClient : true} className="h-5 w-5" />
-          Show on the client&apos;s live tracking page {sharingOn ? "" : "(tracking is off for this job)"}
+          Visible to the client (client portal and tracking link)
         </label>
       </section>
 

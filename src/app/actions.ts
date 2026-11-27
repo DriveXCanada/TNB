@@ -514,3 +514,64 @@ export async function emailAffidavitAction(id: string, fd: FormData) {
   );
   redirect(`/jobs/${a.jobId}/affidavits/${id}?emailed=${to.length}`);
 }
+
+/* ---------- client portal (staff side) ---------- */
+
+async function sendPortalInvite(portalUserId: string) {
+  const token = randomBytes(24).toString("base64url");
+  const u = await prisma.portalUser.update({
+    where: { id: portalUserId },
+    data: { inviteToken: token, inviteExpires: new Date(Date.now() + INVITE_DAYS * 86400000) },
+    include: { client: true },
+  });
+  const settings = await getSettings();
+  await sendMail(
+    [u.email],
+    `Your client portal access – ${settings.companyName}`,
+    `Hi ${u.name},\n\n${settings.companyName} has set up client portal access for ${u.client.name}.\n` +
+      `In the portal you can follow your service jobs, see each attempt as it's logged, and download affidavits.\n\n` +
+      `Set your password here (link valid for ${INVITE_DAYS} days):\n${appUrl()}/portal/invite/${token}\n\n` +
+      `After that, sign in any time at ${appUrl()}/portal\n`
+  );
+}
+
+export async function addPortalUserAction(clientId: string, _: unknown, fd: FormData) {
+  await requirePerm("manageClients");
+  const name = str(fd, "name");
+  const email = str(fd, "email")?.toLowerCase();
+  if (!name || !email || !EMAIL_RE.test(email)) return { error: "Enter a name and a valid email." };
+  if (await prisma.portalUser.findUnique({ where: { email } })) return { error: "That email already has portal access." };
+  const u = await prisma.portalUser.create({ data: { clientId, name, email } });
+  await sendPortalInvite(u.id);
+  revalidatePath(`/clients/${clientId}`);
+  return { ok: `Portal access created for ${name}.` };
+}
+
+export async function resendPortalInviteAction(id: string) {
+  await requirePerm("manageClients");
+  await sendPortalInvite(id);
+  const u = await prisma.portalUser.findUniqueOrThrow({ where: { id } });
+  revalidatePath(`/clients/${u.clientId}`);
+}
+
+export async function togglePortalUserAction(id: string) {
+  await requirePerm("manageClients");
+  const u = await prisma.portalUser.findUniqueOrThrow({ where: { id } });
+  await prisma.portalUser.update({ where: { id }, data: { active: !u.active } });
+  if (u.active) await prisma.portalSession.deleteMany({ where: { portalUserId: id } });
+  revalidatePath(`/clients/${u.clientId}`);
+}
+
+export async function deletePortalUserAction(id: string) {
+  await requirePerm("manageClients");
+  const u = await prisma.portalUser.delete({ where: { id } });
+  revalidatePath(`/clients/${u.clientId}`);
+}
+
+export async function toggleAffidavitClientAction(id: string) {
+  await requirePerm("createAffidavits");
+  const a = await prisma.affidavit.findUniqueOrThrow({ where: { id } });
+  await prisma.affidavit.update({ where: { id }, data: { clientVisible: !a.clientVisible } });
+  revalidatePath(`/jobs/${a.jobId}/affidavits/${id}`);
+  revalidatePath(`/jobs/${a.jobId}`);
+}

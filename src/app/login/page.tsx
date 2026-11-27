@@ -17,6 +17,7 @@ export default async function LoginPage() {
       <div className="eyebrow mb-1">Team sign-in</div>
       <h2 className="h1 mb-6">Welcome back</h2>
       <LoginForm />
+      <p className="mt-6 text-center text-xs text-slate-500">Client? <a className="link" href="/portal/login">Sign in to the client portal</a></p>
     </AuthShell>
   );
 }
