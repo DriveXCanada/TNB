@@ -15,7 +15,7 @@ export default async function EditAffidavitPage({ params }: { params: Promise<{ 
   return (
     <div>
       <AffidavitHeader job={ctx.job} />
-      <AffidavitEditor initial={sanitizeAffidavit(a.data, ctx.defaults)} statements={ctx.statements} action={saveAffidavitAction.bind(null, id, afid)} cancelHref={`/jobs/${id}/affidavits/${afid}`} />
+      <AffidavitEditor initial={sanitizeAffidavit(a.data, ctx.defaults)} statements={ctx.statements} photos={ctx.photos} action={saveAffidavitAction.bind(null, id, afid)} cancelHref={`/jobs/${id}/affidavits/${afid}`} />
     </div>
   );
 }

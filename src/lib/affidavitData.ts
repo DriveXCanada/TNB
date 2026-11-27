@@ -31,6 +31,8 @@ export type AffidavitData = {
   province: string;
   commissionerTitle: string;
   footer: string;
+  /** Attempt photos to attach as exhibit pages. */
+  photoIds: string[];
 };
 
 export const AFFIDAVIT_TEMPLATES: { value: AffidavitTemplate; label: string }[] = [
@@ -59,7 +61,7 @@ export function keyAttempt(job: JobFull) {
 }
 
 /** Pre-fill an affidavit from the job, its attempts and the company settings. */
-export function defaultAffidavit(job: JobFull, settings: Settings, template: AffidavitTemplate = "standard"): AffidavitData {
+export function defaultAffidavit(job: JobFull, settings: Settings, template: AffidavitTemplate = "standard", photoIds: string[] = []): AffidavitData {
   const { attempts, served, last, deponentUser } = keyAttempt(job);
   const name = deponentUser?.name ?? "";
 
@@ -68,16 +70,21 @@ export function defaultAffidavit(job: JobFull, settings: Settings, template: Aff
     manner = `${OUTCOME_LABEL[served.outcome]}: delivered to ${served.personServed || job.recipientName} on ${fmtDateTime(served.attemptedAt)} at ${served.address}`;
   }
 
+  // One compact line per attempt; the address is shown only when it differs from the service address.
   const comments = attempts
     .map((a, i) => {
-      const head = `${i + 1}) ${isServedOutcome(a.outcome) ? "Successful Attempt" : `${OUTCOME_LABEL[a.outcome]} Attempt`}: ${fmtDateTime(a.attemptedAt)} at ${a.address}`;
-      const extra = [
-        a.personServed && `Served: ${a.personServed}${a.relationship ? ` (${a.relationship})` : ""}`,
-        a.personDescription && `Description: ${a.personDescription}`,
-        a.identifiedBy && `Identified: ${a.identifiedBy}`,
+      const served = isServedOutcome(a.outcome);
+      return [
+        `${i + 1}) ${fmtDateTime(a.attemptedAt)} – ${served ? `Successful (${OUTCOME_LABEL[a.outcome]})` : OUTCOME_LABEL[a.outcome]}`,
+        a.address !== job.address && `at ${a.address}`,
+        a.personServed && `served ${a.personServed}${a.relationship ? ` (${a.relationship})` : ""}`,
+        a.personDescription && `described as ${a.personDescription}`,
+        a.identifiedBy && `identified: ${a.identifiedBy}`,
         a.notes,
-      ].filter(Boolean);
-      return [head, ...extra].join("\n");
+      ]
+        .filter(Boolean)
+        .join(" – ")
+        .replace(/\s*\n+\s*/g, " ");
     })
     .join("\n");
 
@@ -106,6 +113,7 @@ export function defaultAffidavit(job: JobFull, settings: Settings, template: Aff
     province: settings.province,
     commissionerTitle: settings.commissionerTitle,
     footer: settings.affidavitFooter,
+    photoIds,
   };
 }
 
@@ -118,6 +126,7 @@ export function sanitizeAffidavit(raw: unknown, fallback: AffidavitData): Affida
     const v = r[k];
     if (typeof fallback[k] === "boolean" && typeof v === "boolean") (out as Record<string, unknown>)[k] = v;
     else if (typeof fallback[k] === "string" && typeof v === "string") (out as Record<string, unknown>)[k] = v.slice(0, 20000);
+    else if (Array.isArray(fallback[k]) && Array.isArray(v)) (out as Record<string, unknown>)[k] = v.filter((x) => typeof x === "string").slice(0, 100);
   }
   if (out.template !== "standard" && out.template !== "ns") out.template = "standard";
   if (out.kind !== "SERVICE" && out.kind !== "NON_SERVICE") out.kind = "NON_SERVICE";

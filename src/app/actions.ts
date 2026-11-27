@@ -24,6 +24,7 @@ import { isServedOutcome, jobNo, OUTCOME_LABEL, fmtDateTime } from "@/lib/labels
 import { getSettings } from "@/lib/settings";
 import { defaultAffidavit, sanitizeAffidavit } from "@/lib/affidavitData";
 import { renderAffidavit } from "@/lib/affidavitPdf";
+import { jobPhotos, loadPhotos } from "@/lib/affidavitPhotos";
 
 const str = (fd: FormData, k: string) => {
   const v = fd.get(k);
@@ -389,8 +390,9 @@ export async function saveAffidavitAction(jobId: string, affidavitId: string | n
   try {
     raw = JSON.parse(String(fd.get("data") ?? "null"));
   } catch {}
-  const data = sanitizeAffidavit(raw, defaultAffidavit(job, await getSettings()));
-  const pdf = Buffer.from(await renderAffidavit(data));
+  const allPhotos = await jobPhotos(jobId);
+  const data = sanitizeAffidavit(raw, defaultAffidavit(job, await getSettings(), "standard", allPhotos.map((p) => p.id)));
+  const pdf = Buffer.from(await renderAffidavit(data, await loadPhotos(jobId, data.photoIds)));
   const fields = { kind: data.kind, template: data.template, data, pdf };
   let id = affidavitId;
   if (id) {

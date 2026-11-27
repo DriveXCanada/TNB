@@ -13,7 +13,7 @@ export default async function NewAffidavitPage({ params }: { params: Promise<{ i
   return (
     <div>
       <AffidavitHeader job={ctx.job} />
-      <AffidavitEditor initial={ctx.defaults} statements={ctx.statements} action={saveAffidavitAction.bind(null, id, null)} cancelHref={`/jobs/${id}`} />
+      <AffidavitEditor initial={ctx.defaults} statements={ctx.statements} photos={ctx.photos} action={saveAffidavitAction.bind(null, id, null)} cancelHref={`/jobs/${id}`} />
     </div>
   );
 }

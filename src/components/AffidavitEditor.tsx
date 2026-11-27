@@ -11,11 +11,13 @@ export default function AffidavitEditor({
   statements,
   action,
   cancelHref,
+  photos = [],
 }: {
   initial: AffidavitData;
   statements: Record<AffidavitTemplate, string>;
   action: (fd: FormData) => Promise<void>;
   cancelHref: string;
+  photos?: { id: string; caption: string }[];
 }) {
   const [d, setD] = useState(initial);
   const set = <K extends keyof AffidavitData>(k: K, v: AffidavitData[K]) => setD((x) => ({ ...x, [k]: v }));
@@ -81,6 +83,44 @@ export default function AffidavitEditor({
         <div className="mt-4 text-sm font-semibold">Additional Comments:</div>
         {text("comments", 4)}
 
+        <div className="mt-5 rounded-lg border-2 border-dashed border-slate-200 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-semibold">
+              Photos to attach{" "}
+              <span className="font-normal text-slate-500">
+                (added after the affidavit as Exhibit &quot;{d.template === "ns" && d.kind === "SERVICE" ? "B" : "A"}&quot;, 2 per page)
+              </span>
+            </div>
+            {photos.length > 0 && (
+              <div className="flex gap-3 text-xs">
+                <button type="button" className="link" onClick={() => set("photoIds", photos.map((p) => p.id))}>Select all</button>
+                <button type="button" className="link" onClick={() => set("photoIds", [])}>None</button>
+              </div>
+            )}
+          </div>
+          {photos.length === 0 ? (
+            <p className="mt-1 text-sm text-slate-500">No attempt photos on this job.</p>
+          ) : (
+            <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+              {photos.map((p) => {
+                const on = d.photoIds.includes(p.id);
+                return (
+                  <label key={p.id} title={p.caption} className={`relative cursor-pointer overflow-hidden rounded-md border-2 ${on ? "border-gold-500" : "border-transparent opacity-50"}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/api/files/${p.id}`} alt={p.caption} className="aspect-square w-full object-cover" />
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) => set("photoIds", e.target.checked ? [...d.photoIds, p.id] : d.photoIds.filter((x) => x !== p.id))}
+                      className="absolute top-1 left-1 h-5 w-5"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <label className="mt-3 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={d.includeFees} onChange={(e) => set("includeFees", e.target.checked)} className="h-4 w-4" /> Include fees?
         </label>
@@ -109,6 +149,7 @@ export default function AffidavitEditor({
             )}
           </div>
         </div>
+        <p className="mt-6 text-xs text-slate-500">The affidavit is automatically sized to fit on one page; photos go on the pages after it.</p>
         {d.template === "ns" && (
           <p className="mt-6 text-xs text-slate-500">The Nova Scotia layout adds the court heading, the Between: block, the &quot;Sworn to [or Affirmed] at…&quot; jurat and an Exhibit &quot;A&quot; line on the PDF.</p>
         )}
