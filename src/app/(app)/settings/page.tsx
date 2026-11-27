@@ -46,7 +46,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             Show attempt photos on client tracking pages
           </label>
           <p className="muted">
-            Email notifications: {mailEnabled() ? "enabled (SMTP is configured)." : "off. Set the SMTP_HOST and SMTP_FROM environment variables to turn them on."}
+            Email notifications: {mailEnabled() ? "enabled." : "off. Set RESEND_API_KEY and MAIL_FROM (or SMTP settings) in your host's environment variables to turn them on."}
           </p>
         </section>
 
