@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { can, canAccessJob, requirePerm } from "@/lib/auth";
+import { canAccessJob, requirePerm } from "@/lib/auth";
 import { saveAffidavitAction } from "@/app/actions";
 import { affidavitContext } from "@/lib/affidavitPage";
 import { sanitizeAffidavit } from "@/lib/affidavitData";
@@ -15,7 +15,7 @@ export default async function EditAffidavitPage({ params }: { params: Promise<{ 
   return (
     <div>
       <AffidavitHeader job={ctx.job} />
-      <AffidavitEditor initial={sanitizeAffidavit(a.data, ctx.defaults)} statements={ctx.statements} action={saveAffidavitAction.bind(null, id, afid)} canShare={can(user, "emailSharing")} cancelHref={`/jobs/${id}/affidavits/${afid}`} />
+      <AffidavitEditor initial={sanitizeAffidavit(a.data, ctx.defaults)} statements={ctx.statements} action={saveAffidavitAction.bind(null, id, afid)} cancelHref={`/jobs/${id}/affidavits/${afid}`} />
     </div>
   );
 }

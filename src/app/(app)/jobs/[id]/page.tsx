@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { can, canAccessJob, requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { appUrl } from "@/lib/mail";
+import { appUrl } from "@/lib/url";
 import { jobAddresses } from "@/lib/jobAddresses";
 import { fmtDate, fmtDateTime, isServedOutcome, jobNo, OUTCOME_LABEL, STATUS_LABEL, statusText } from "@/lib/labels";
 import {
@@ -43,12 +43,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export default async function JobPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ logged?: string; emailed?: string }> }) {
+export default async function JobPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ logged?: string }> }) {
   const user = await requireUser();
   const staff = can(user, "manageJobs");
   const seeClient = staff || can(user, "manageClients");
   const canAttempt = can(user, "createAttempts");
-  const canShare = can(user, "emailSharing");
   const canAffidavit = can(user, "createAffidavits");
   const { id } = await params;
   const sp = await searchParams;
@@ -78,7 +77,6 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   return (
     <div className="space-y-4">
       {sp.logged && <div className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800">✓ Attempt saved.</div>}
-      {sp.emailed && <div className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800">✓ Emailed to {sp.emailed} recipient(s).</div>}
       {job.archived && <div className="rounded-lg bg-slate-200 p-3 text-sm font-medium text-slate-700">This job is archived.</div>}
 
       {/* Header */}
@@ -183,8 +181,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                         </div>
                         <div className="text-sm">{a.address}</div>
                         <div className="text-right text-sm">
-                          {canShare && <Link className="link" href={`/jobs/${job.id}/attempts/${a.id}/share`}>Share</Link>}
-                          <div className="text-slate-600">{a.server?.name ?? "—"}</div>
+                                                    <div className="text-slate-600">{a.server?.name ?? "—"}</div>
                         </div>
                       </summary>
                       <div className="mt-2 space-y-1 rounded-md bg-slate-50 p-3 text-sm">

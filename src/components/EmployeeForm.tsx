@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
 import type { Role } from "@prisma/client";
 import {
@@ -55,24 +55,20 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 export default function EmployeeForm({
   action,
-  resendInvite,
   values,
   editorPermissions,
   editorIsOwner,
   isSelf,
   isNew,
-  invitePending,
-  inviteLink,
+  noPassword,
 }: {
   action: (state: unknown, fd: FormData) => Promise<{ error: string } | undefined>;
-  resendInvite?: () => Promise<void>;
   values: EmployeeValues;
   editorPermissions: Permission[];
   editorIsOwner: boolean;
   isSelf: boolean;
   isNew: boolean;
-  invitePending: boolean;
-  inviteLink?: string;
+  noPassword: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [role, setRole] = useState<Role>(values.role);
@@ -87,7 +83,15 @@ export default function EmployeeForm({
   };
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form
+      className="space-y-6"
+      // Submit without React's automatic form reset, so an error doesn't wipe what was typed.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        startTransition(() => formAction(fd));
+      }}
+    >
       <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <section className="card space-y-3">
           <h2 className="h2">Employee Info</h2>
@@ -109,19 +113,12 @@ export default function EmployeeForm({
             </label>
           </Row>
         </section>
-        <aside className="card h-fit space-y-2 bg-slate-50">
-          <h3 className="font-semibold">Employee Invitation</h3>
-          {isNew ? (
-            <p className="text-sm text-slate-600">Each new employee receives an email invitation with instructions for setting their password. You can also set a password for them below instead.</p>
-          ) : invitePending ? (
-            <>
-              <p className="text-sm text-slate-600">Invitation sent. They haven&apos;t set a password yet.</p>
-              {inviteLink && <input className="input text-xs" readOnly value={inviteLink} onFocus={(e) => e.target.select()} />}
-              {resendInvite && <button formAction={resendInvite} formNoValidate className="btn-secondary w-full">Resend invitation</button>}
-            </>
-          ) : (
-            <p className="text-sm text-slate-600">{v.role === "CONTACT" ? "Contacts can't sign in." : "This employee has set their password and can sign in."}</p>
-          )}
+        <aside className="card h-fit space-y-2 border-l-4 border-l-gold-500 bg-slate-50">
+          <h3 className="font-bold text-navy-900">Signing in</h3>
+          <p className="text-sm text-slate-600">
+            They sign in with their email and the password you set below. Give them the password yourself; they can change it under <b>My Account</b>.
+          </p>
+          {noPassword && <p className="text-sm font-semibold text-amber-700">No password set yet – set one below so they can sign in.</p>}
         </aside>
       </div>
 
@@ -200,8 +197,8 @@ export default function EmployeeForm({
 
       <section className="card space-y-3">
         <h2 className="h2">Sign-in</h2>
-        <Row label={isNew ? "Set password (optional)" : "New password"}>
-          <input className="input" type="password" name="password" minLength={8} autoComplete="new-password" placeholder={isNew ? "Leave blank to email an invitation" : "Leave blank to keep the current password"} />
+        <Row label={isNew || noPassword ? "Password" : "New password"}>
+          <input className="input" type="password" name="password" minLength={8} autoComplete="new-password" required={isNew && role !== "CONTACT"} placeholder={isNew || noPassword ? "At least 8 characters" : "Leave blank to keep the current password"} />
         </Row>
         {!isNew && !isSelf && (
           <Row label="">

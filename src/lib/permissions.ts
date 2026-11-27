@@ -8,7 +8,6 @@ export const PERMISSIONS = {
   deleteAttempts: "Delete Attempts",
   createAffidavits: "Create & Update Affidavits",
   deleteAffidavits: "Delete Affidavits",
-  emailSharing: "Enable Email & Sharing",
   manageClients: "Manage Clients",
   manageEmployees: "Manage Employees",
   updateSettings: "Update Account Settings",
@@ -25,7 +24,6 @@ export const PERMISSION_HELP: Record<Permission, string> = {
   deleteAttempts: "Delete service attempts.",
   createAffidavits: "Create, edit and print affidavits.",
   deleteAffidavits: "Delete saved affidavits.",
-  emailSharing: "Email attempts and affidavits to clients and staff.",
   manageClients: "Add and edit clients and see their contact details.",
   manageEmployees: "Add and edit employees and their permissions.",
   updateSettings: "Change company, affidavit and tracking settings.",
@@ -33,7 +31,7 @@ export const PERMISSION_HELP: Record<Permission, string> = {
 };
 
 export const PERMISSION_COLUMNS: Permission[][] = [
-  ["manageJobs", "viewAllJobs", "createAttempts", "deleteAttempts", "createAffidavits", "deleteAffidavits", "emailSharing"],
+  ["manageJobs", "viewAllJobs", "createAttempts", "deleteAttempts", "createAffidavits", "deleteAffidavits"],
   ["manageClients", "manageEmployees", "updateSettings", "viewDashboard"],
 ];
 

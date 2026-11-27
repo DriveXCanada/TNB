@@ -1,6 +1,5 @@
 import { requirePerm } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { mailEnabled } from "@/lib/mail";
 import { saveSettingsAction } from "@/app/actions";
 
 const PROVINCES = ["Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador", "Nova Scotia", "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan", "Northwest Territories", "Nunavut", "Yukon"];
@@ -46,9 +45,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <input type="checkbox" name="sharePhotosWithClient" defaultChecked={s.sharePhotosWithClient === "true"} className="h-4 w-4" />
             Show attempt photos on client tracking pages
           </label>
-          <p className="muted">
-            Email notifications: {mailEnabled() ? "enabled." : "off. Set RESEND_API_KEY and MAIL_FROM (or SMTP settings) in your host's environment variables to turn them on."}
-          </p>
         </section>
 
         <button className="btn-primary">Save settings</button>

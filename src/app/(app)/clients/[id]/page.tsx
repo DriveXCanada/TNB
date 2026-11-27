@@ -5,13 +5,13 @@ import {
   addPortalUserAction,
   deleteClientAction,
   deletePortalUserAction,
-  resendPortalInviteAction,
   saveClientAction,
+  setPortalPinAction,
   togglePortalUserAction,
 } from "@/app/actions";
-import { appUrl, mailEnabled } from "@/lib/mail";
+import { appUrl } from "@/lib/url";
 import { fmtDate } from "@/lib/labels";
-import AddPortalUser from "@/components/PortalAccess";
+import { AddPortalLogin, SetPortalPin } from "@/components/PortalLogins";
 import ConfirmButton from "@/components/ConfirmButton";
 
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
@@ -39,43 +39,37 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           <div>
             <h2 className="h2">Client portal access</h2>
             <p className="muted">
-              People added here can sign in at <span className="font-semibold text-navy-800">{appUrl()}/portal</span> and see only {c!.name}&apos;s jobs,
-              the attempts you mark visible, and affidavits.
+              People added here sign in at <span className="font-semibold text-navy-800">{appUrl()}/portal</span> with their name and a PIN you give them.
+              They see only {c!.name}&apos;s jobs, the attempts marked visible, and affidavits. They can change their PIN after signing in.
             </p>
           </div>
           {c!.portalUsers.length > 0 && (
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-              {c!.portalUsers.map((pu) => (
-                <li key={pu.id} className={`flex flex-wrap items-center justify-between gap-2 p-3 ${pu.active ? "" : "opacity-60"}`}>
-                  <div className="min-w-0">
-                    <div className="font-bold text-navy-900">{pu.name}</div>
-                    <div className="text-sm text-slate-600">{pu.email}</div>
-                    <div className="text-xs text-slate-500">
-                      {!pu.active ? "Access turned off" : !pu.passwordHash ? "Invitation sent – password not set yet" : pu.lastLoginAt ? `Last signed in ${fmtDate(pu.lastLoginAt)}` : "Password set"}
+              {c!.portalUsers.map((pu) => {
+                const locked = pu.lockedUntil && pu.lockedUntil > new Date();
+                return (
+                  <li key={pu.id} className={`flex flex-wrap items-center justify-between gap-3 p-3 ${pu.active ? "" : "opacity-60"}`}>
+                    <div className="min-w-0">
+                      <div className="font-bold text-navy-900">{pu.name}</div>
+                      <div className="text-xs text-slate-500">
+                        {!pu.active ? "Access turned off" : !pu.passwordHash ? "No PIN set yet – set one so they can sign in" : locked ? "Locked after too many wrong PINs – set a new PIN to unlock" : pu.lastLoginAt ? `Last signed in ${fmtDate(pu.lastLoginAt)}` : "Hasn't signed in yet"}
+                      </div>
                     </div>
-                    {pu.active && pu.inviteToken && !mailEnabled() && (
-                      <input className="input mt-1 text-xs" readOnly value={`${appUrl()}/portal/invite/${pu.inviteToken}`} />
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 text-sm">
-                    {pu.active && (
-                      <form action={resendPortalInviteAction.bind(null, pu.id)}>
-                        <button className="btn-secondary py-1">{pu.passwordHash ? "Send password reset" : "Resend invite"}</button>
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      {pu.active && <SetPortalPin action={setPortalPinAction.bind(null, pu.id)} />}
+                      <form action={togglePortalUserAction.bind(null, pu.id)}>
+                        <button className="btn-secondary py-1">{pu.active ? "Turn off" : "Turn on"}</button>
                       </form>
-                    )}
-                    <form action={togglePortalUserAction.bind(null, pu.id)}>
-                      <button className="btn-secondary py-1">{pu.active ? "Turn off" : "Turn on"}</button>
-                    </form>
-                    <form action={deletePortalUserAction.bind(null, pu.id)}>
-                      <ConfirmButton className="py-1 font-semibold text-rose-600" message={`Remove portal access for ${pu.name}?`}>Remove</ConfirmButton>
-                    </form>
-                  </div>
-                </li>
-              ))}
+                      <form action={deletePortalUserAction.bind(null, pu.id)}>
+                        <ConfirmButton className="py-1 font-semibold text-rose-600" message={`Remove portal access for ${pu.name}?`}>Remove</ConfirmButton>
+                      </form>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
-          <AddPortalUser action={addPortalUserAction.bind(null, id)} />
-          {!mailEnabled() && <p className="text-xs text-amber-700">Email isn&apos;t set up yet, so copy each invitation link above and send it yourself.</p>}
+          <AddPortalLogin action={addPortalUserAction.bind(null, id)} />
         </section>
       )}
       {!isNew && (

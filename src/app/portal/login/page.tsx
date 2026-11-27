@@ -15,7 +15,7 @@ export default async function PortalLoginPage() {
     <AuthShell company={s.companyName} tagline={s.tagline}>
       <div className="eyebrow mb-1">Client portal</div>
       <h2 className="h1 mb-1">Sign in</h2>
-      <p className="muted mb-6">Follow your service jobs, attempts and affidavits.</p>
+      <p className="muted mb-6">Sign in with your name and the PIN we gave you.</p>
       <PortalLoginForm />
       <p className="mt-6 text-center text-xs text-slate-500">Staff member? <Link className="link" href="/login">Team sign-in</Link></p>
     </AuthShell>

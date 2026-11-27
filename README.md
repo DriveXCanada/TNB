@@ -1,20 +1,18 @@
-# TNB Process Serving
+# Vantage Security Consulting – Process Serving
 
-A web app for running a process serving business: jobs, service attempts, field logging from a phone, affidavits of service, and live tracking links for clients.
+A web app for running a process serving business in Nova Scotia: jobs, service attempts from the field, affidavits, employees with permissions, and a client portal.
 
 ## Features
 
-- **Jobs** – recipient, service and alternate addresses, court, file number, title of proceeding, documents to serve (with uploads), client and client reference, priority, due date, fee and instructions.
-- **Team and roles** – *Admins* (office) manage everything. *Servers* sign in and see only the jobs assigned to them.
-- **Field mode** (`/field`) – phone-first screens. Servers tap **Navigate** to open Google Maps, then log attempts with:
-  - big outcome buttons (personal, substituted, corporate, posted, not home, refused, bad address…)
-  - automatic GPS capture with accuracy
-  - camera photos, resized on the phone before upload
-  - the details of the person served (name, relationship, physical description)
-- **Live client tracking** – every job gets a private link (`/track/<token>`) for your client. It updates live, about every 15 seconds, as attempts are logged, and shows only attempts marked “share with client”. Photos are optional (see Settings). You can disable a link or issue a new one at any time. If SMTP is configured, the client’s email and the job’s notify emails also get a message for each shared attempt.
-- **Affidavit of Service PDF** – set up for Nova Scotia by default. It follows Civil Procedure Rule 31.05 and Form 31.05: delivery by a non-party, where and how the documents were delivered, how the server identified the person, an Exhibit "A" true copy of the documents, earlier attempts, and the "Sworn to [or Affirmed] … before me" block with signature, print name and official capacity lines. In Nova Scotia, substituted and posted delivery are labelled as needing a court order (Rule 31.10). Other provinces get a generic layout. **Compare the output with the current official Form 31.05 before you swear it.**
+- **Jobs** – client (details filled in from your client list), client job number, court case number, plaintiff (filled in from the client), defendant, date filed, court date, court and county, party to serve (filled in from the defendant) with email and phone, service and alternate addresses, documents, assigned server, attempt due date, instructions.
+- **Job page** – client / server / status summary; service attempts (expand for notes, GPS, photos; edit); affidavits; recipient, instructions, documents, court case; printable field sheet; archive.
+- **Attempts** – Personal Service, Unsuccessful or Bad Address. Date and time fill in automatically and can be changed for attempts logged later. Description presets, GPS, photos/uploads, "add new address". Personal service marks the job **Served**; otherwise the status reads "N Attempts".
+- **Affidavits** – New Affidavit opens an editable form pre-filled from the job (Affidavit of Service or Non-Service, picked automatically). Save stores it on the job and downloads the PDF; print, download or edit later. Templates: Standard, or Nova Scotia Form 31.05 style. **Check the wording before swearing it.**
+- **Employees** – Owner, Admin, Limited, Contact or Custom permissions; license number and expiry, address, default server. You set each employee's password; they can change it under **My Account**.
+- **Client portal** (`/portal`) – on a client's page, add logins with a **name and PIN**. Clients sign in with those, see only their own company's jobs, the attempts marked visible, and affidavits marked visible, and can change their PIN. A login locks for 15 minutes after 5 wrong PINs; setting a new PIN unlocks it.
+- **Tracking link** – each job also has a no-login tracking page you can share; it shows only visible attempts.
 
-Billing is not included: invoices are handled in Square. The fee field on each job is only for reference.
+The app sends no email. Billing is handled in Square, so there is no invoicing.
 
 ## Run locally
 
@@ -25,23 +23,19 @@ npx prisma migrate dev        # creates the tables
 npm run dev                   # http://localhost:3000
 ```
 
-On first visit, you’ll be asked to create the admin account.
+On first visit you'll be asked to create the Owner account.
 
 ## Deploy to Railway
 
-1. Push this repo to GitHub.
-2. In Railway, open **New Project → Deploy from GitHub repo** and pick this repo.
-3. In the same project, choose **+ New → Database → PostgreSQL**.
-4. In the app service’s **Variables**, add:
-   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (a reference to the database)
-   - `APP_URL` = your public URL, for example `https://tnb.up.railway.app`. Used in tracking links.
-   - `APP_TIMEZONE` = defaults to `America/Halifax`
-   - Email: `MAIL_FROM` plus either `RESEND_API_KEY` (recommended; Railway blocks SMTP below the Pro plan) or `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`
-5. Under **Settings → Networking**, click **Generate Domain**.
-6. Deploy. Migrations run automatically on start. The app keeps its tables in their own Postgres schema, `tnb`, so it works even if the database already has tables in `public` (which otherwise causes Prisma error P3005). Set `DB_SCHEMA` to use a different schema name. Open the URL and create your master account.
-
-Photos and documents are stored in the Postgres database, so no separate file storage is needed.
+1. New Project → Deploy from GitHub repo → this repo.
+2. + New → Database → PostgreSQL.
+3. App service Variables:
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
+   - `APP_URL` = your public address, e.g. `https://www.yourdomain.com` (used in tracking links)
+   - `APP_TIMEZONE` = `America/Halifax` (default)
+4. Settings → Networking → add your domain (or Generate Domain).
+5. Deploy. Migrations run on start. The app keeps its tables in their own Postgres schema, `tnb`, so it works even if the database already has tables in `public` (which otherwise causes Prisma error P3005). Set `DB_SCHEMA` to use another name.
 
 ## Tech
 
-Next.js 15 (App Router, server actions), PostgreSQL via Prisma, Tailwind CSS 4, pdf-lib for PDFs, nodemailer for optional email.
+Next.js 15 (App Router, server actions), PostgreSQL via Prisma, Tailwind CSS 4, pdf-lib for PDFs.

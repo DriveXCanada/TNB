@@ -29,12 +29,9 @@ export default async function NewAttemptPage({ params, searchParams }: { params:
         <AttemptForm
           action={createAttemptAction.bind(null, job.id)}
           addresses={jobAddresses(job)}
-          recipients={data.recipients}
-          mailOn={data.mailOn}
           servers={data.servers}
           currentUserId={data.canChooseServer && job.serverId && data.servers.some((s) => s.id === job.serverId) ? job.serverId : user.id}
           canChooseServer={data.canChooseServer}
-          canEmail={data.canEmail}
           sharingOn={job.trackingEnabled}
           returnTo={sp.from === "field" ? `/field/${job.id}` : `/jobs/${job.id}`}
         />

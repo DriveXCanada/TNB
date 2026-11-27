@@ -22,8 +22,9 @@ export default async function PortalLayout({ children }: { children: React.React
           </Link>
           <div className="hidden text-right text-sm sm:block">
             <div className="font-bold">{u.name}</div>
-            <div className="text-xs text-navy-300">{u.email}</div>
+            <Link href="/portal/account" className="text-xs font-semibold text-gold-400 hover:text-gold-300">Change PIN</Link>
           </div>
+          <Link href="/portal/account" className="text-sm font-semibold text-navy-200 hover:text-white sm:hidden">PIN</Link>
           <form action={portalLogoutAction}><button className="text-sm font-semibold text-navy-200 hover:text-white">Sign out</button></form>
         </div>
       </header>

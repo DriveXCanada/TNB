@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { can, canAccessJob, requirePerm } from "@/lib/auth";
+import { canAccessJob, requirePerm } from "@/lib/auth";
 import { saveAffidavitAction } from "@/app/actions";
 import { affidavitContext } from "@/lib/affidavitPage";
 import AffidavitHeader from "@/components/AffidavitHeader";
@@ -13,7 +13,7 @@ export default async function NewAffidavitPage({ params }: { params: Promise<{ i
   return (
     <div>
       <AffidavitHeader job={ctx.job} />
-      <AffidavitEditor initial={ctx.defaults} statements={ctx.statements} action={saveAffidavitAction.bind(null, id, null)} canShare={can(user, "emailSharing")} cancelHref={`/jobs/${id}`} />
+      <AffidavitEditor initial={ctx.defaults} statements={ctx.statements} action={saveAffidavitAction.bind(null, id, null)} cancelHref={`/jobs/${id}`} />
     </div>
   );
 }

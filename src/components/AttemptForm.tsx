@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import EmailShare from "./EmailShare";
-import type { Recipient } from "@/lib/recipients";
 
 const SERVICE_TYPES = [
   { value: "PERSONAL", label: "Personal Service" },
@@ -84,26 +82,20 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export default function AttemptForm({
   action,
   addresses,
-  recipients,
-  mailOn,
   returnTo,
   servers,
   currentUserId,
   canChooseServer,
   sharingOn,
-  canEmail = true,
   defaults,
 }: {
   action: (fd: FormData) => Promise<void>;
   addresses: string[];
-  recipients: Recipient[];
-  mailOn: boolean;
   returnTo: string;
   servers: { id: string; name: string }[];
   currentUserId: string;
   canChooseServer: boolean;
   sharingOn: boolean;
-  canEmail?: boolean;
   defaults?: AttemptDefaults;
 }) {
   const editing = Boolean(defaults);
@@ -308,15 +300,8 @@ export default function AttemptForm({
         </div>
       </section>
 
-      <section className="card space-y-3">
-        <h2 className="h2">{canEmail ? "Email & Share" : "Share"}</h2>
-        {canEmail && (
-          <>
-            <p className="muted">Tick anyone who should get an emailed copy when you save. Nothing is emailed if nothing is ticked.</p>
-            <EmailShare recipients={recipients} mailOn={mailOn} />
-          </>
-        )}
-        <label className="flex items-center gap-2 border-t border-slate-100 pt-3 text-sm">
+      <section className="card">
+        <label className="flex items-center gap-3 text-sm font-semibold text-navy-900">
           <input type="checkbox" name="shareWithClient" defaultChecked={defaults ? defaults.shareWithClient : true} className="h-5 w-5" />
           Visible to the client (client portal and tracking link)
         </label>

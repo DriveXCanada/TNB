@@ -19,8 +19,8 @@ import {
 import { storeUploads } from "@/lib/files";
 import { saveSettings, DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
 import { effectivePermissions, PERMISSIONS, ROLE_PRESETS, type Permission } from "@/lib/permissions";
+import { checkPin, normalizeLoginName } from "@/lib/pin";
 import { isServedOutcome, jobNo, OUTCOME_LABEL, fmtDateTime } from "@/lib/labels";
-import { appUrl, sendMail } from "@/lib/mail";
 import { getSettings } from "@/lib/settings";
 import { defaultAffidavit, sanitizeAffidavit } from "@/lib/affidavitData";
 import { renderAffidavit } from "@/lib/affidavitPdf";
@@ -90,7 +90,6 @@ function jobData(fd: FormData) {
     altAddresses: str(fd, "altAddresses"),
     clientId: str(fd, "clientId"),
     clientReference: str(fd, "clientReference"),
-    notifyEmails: str(fd, "notifyEmails"),
     courtName: str(fd, "courtName"),
     courtFileNumber: str(fd, "courtFileNumber"),
     courtCounty: str(fd, "courtCounty"),
@@ -168,46 +167,6 @@ export async function deleteFileAction(fileId: string, jobId: string) {
 
 /* ---------- attempts ---------- */
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Checked recipients plus anything typed in "other email", de-duplicated and validated. */
-function chosenRecipients(fd: FormData) {
-  const typed = (str(fd, "emailOther") ?? "").split(/[,;\s]+/);
-  const picked = fd.getAll("emailTo").map(String);
-  return [...new Set([...picked, ...typed].map((e) => e.trim().toLowerCase()).filter((e) => EMAIL_RE.test(e)))];
-}
-
-async function emailAttempt(attemptId: string, to: string[]) {
-  if (to.length === 0) return;
-  const a = await prisma.attempt.findUniqueOrThrow({
-    where: { id: attemptId },
-    include: { server: true, files: true, job: true },
-  });
-  const job = a.job;
-  const served = isServedOutcome(a.outcome);
-  const lines = [
-    `Service update for ${job.recipientName}`,
-    job.clientReference ? `Your job no.: ${job.clientReference}` : "",
-    job.courtFileNumber ? `Court case no.: ${job.courtFileNumber}` : "",
-    "",
-    `${OUTCOME_LABEL[a.outcome]}`,
-    `${fmtDateTime(a.attemptedAt)}`,
-    `${a.address}`,
-    a.server ? `Server: ${a.server.name}` : "",
-    a.personServed ? `Person served: ${a.personServed}${a.relationship ? ` (${a.relationship})` : ""}` : "",
-    a.personDescription ? `Description: ${a.personDescription}` : "",
-    a.latitude != null && a.longitude != null ? `GPS: https://www.google.com/maps?q=${a.latitude},${a.longitude}` : "",
-    a.notes ? `\nNotes: ${a.notes}` : "",
-    job.trackingEnabled && a.shareWithClient ? `\nLive tracking: ${appUrl()}/track/${job.trackingToken}` : "",
-  ];
-  await sendMail(
-    to,
-    `${served ? "Served" : "Attempt"}: ${job.recipientName} – ${jobNo(job.number)}`,
-    lines.filter((l, i) => l !== "" || i === 3).join("\n"),
-    a.files.filter((f) => f.kind === "PHOTO").map((f) => ({ filename: f.filename, content: Buffer.from(f.data), contentType: f.mimeType }))
-  );
-}
-
 function attemptData(fd: FormData, fallbackAddress: string) {
   const num = (k: string) => {
     const v = str(fd, k);
@@ -271,7 +230,6 @@ export async function createAttemptAction(jobId: string, fd: FormData) {
   });
   await storeUploads(files(fd, "photos"), "PHOTO", { attemptId: attempt.id, jobId });
   await syncJobStatus(jobId);
-  if (can(user, "emailSharing")) await emailAttempt(attempt.id, chosenRecipients(fd));
   redirect(`${returnPath(fd, jobId)}?logged=1`);
 }
 
@@ -285,18 +243,7 @@ export async function updateAttemptAction(attemptId: string, fd: FormData) {
   });
   await storeUploads(files(fd, "photos"), "PHOTO", { attemptId, jobId: a.jobId });
   await syncJobStatus(a.jobId);
-  if (can(user, "emailSharing")) await emailAttempt(attemptId, chosenRecipients(fd));
   redirect(returnPath(fd, a.jobId));
-}
-
-/** "Share" on an existing attempt: email it to the chosen recipients. */
-export async function emailAttemptAction(attemptId: string, fd: FormData) {
-  const user = await requirePerm("emailSharing");
-  const a = await prisma.attempt.findUniqueOrThrow({ where: { id: attemptId }, include: { job: true } });
-  if (!canAccessJob(user, a.job)) throw new Error("Not allowed");
-  const to = chosenRecipients(fd);
-  await emailAttempt(attemptId, to);
-  redirect(`/jobs/${a.jobId}?emailed=${to.length}`);
 }
 
 export async function deleteAttemptAction(attemptId: string, jobId: string) {
@@ -348,23 +295,6 @@ export async function deleteClientAction(id: string) {
 
 /* ---------- employees ---------- */
 
-const INVITE_DAYS = 7;
-
-async function sendInvite(userId: string) {
-  const token = randomBytes(24).toString("base64url");
-  const u = await prisma.user.update({
-    where: { id: userId },
-    data: { inviteToken: token, inviteExpires: new Date(Date.now() + INVITE_DAYS * 86400000) },
-  });
-  const settings = await getSettings();
-  await sendMail(
-    [u.email],
-    `You're invited to ${settings.companyName}`,
-    `Hi ${u.firstName || u.name},\n\n${settings.companyName} has added you as a team member.\n` +
-      `Set your password and sign in here (link valid for ${INVITE_DAYS} days):\n\n${appUrl()}/invite/${token}\n`
-  );
-}
-
 export async function saveEmployeeAction(id: string | null, _: unknown, fd: FormData) {
   const me = await requirePerm("manageEmployees");
   const existing = id ? await prisma.user.findUniqueOrThrow({ where: { id } }) : null;
@@ -410,7 +340,8 @@ export async function saveEmployeeAction(id: string | null, _: unknown, fd: Form
     active: self ? true : fd.get("active") !== null ? fd.get("active") === "on" : true,
   };
   const password = str(fd, "password");
-  if (password && password.length < 8) return { error: "Password must be at least 8 characters" };
+  if (password && password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (!existing && !password && role !== "CONTACT") return { error: "Set a password so they can sign in (min. 8 characters). Give it to them; they can change it under My Account." };
   const clash = await prisma.user.findFirst({ where: { email: data.email, NOT: id ? { id } : undefined } });
   if (clash) return { error: "Another employee already uses that email." };
 
@@ -418,33 +349,13 @@ export async function saveEmployeeAction(id: string | null, _: unknown, fd: Form
 
   let userId = id;
   if (existing) {
-    await prisma.user.update({ where: { id: existing.id }, data: { ...data, ...(password ? { passwordHash: await hashPassword(password), inviteToken: null } : {}) } });
+    await prisma.user.update({ where: { id: existing.id }, data: { ...data, ...(password ? { passwordHash: await hashPassword(password), inviteToken: null, inviteExpires: null } : {}) } });
     if (!data.active || role === "CONTACT") await prisma.session.deleteMany({ where: { userId: existing.id } });
   } else {
     const u = await prisma.user.create({ data: { ...data, passwordHash: password ? await hashPassword(password) : null } });
     userId = u.id;
-    if (!password && role !== "CONTACT") await sendInvite(u.id);
   }
   redirect(`/team/${userId}?saved=1`);
-}
-
-export async function resendInviteAction(id: string) {
-  const me = await requirePerm("manageEmployees");
-  const u = await prisma.user.findUniqueOrThrow({ where: { id } });
-  if (u.role === "ADMIN" && me.role !== "ADMIN") throw new Error("Only an Owner can edit another Owner.");
-  await sendInvite(id);
-  redirect(`/team/${id}?invited=1`);
-}
-
-export async function acceptInviteAction(token: string, _: unknown, fd: FormData) {
-  const u = await prisma.user.findUnique({ where: { inviteToken: token } });
-  if (!u || !u.inviteExpires || u.inviteExpires < new Date() || !u.active || u.role === "CONTACT") return { error: "This invitation link has expired. Ask your office to send a new one." };
-  const password = str(fd, "password") ?? "";
-  if (password.length < 8) return { error: "Password must be at least 8 characters." };
-  if (password !== str(fd, "confirm")) return { error: "Passwords don't match." };
-  await prisma.user.update({ where: { id: u.id }, data: { passwordHash: await hashPassword(password), inviteToken: null, inviteExpires: null } });
-  await createSession(u.id);
-  redirect(can(u, "viewDashboard") ? "/" : "/jobs");
 }
 
 /* ---------- settings ---------- */
@@ -489,7 +400,7 @@ export async function saveAffidavitAction(jobId: string, affidavitId: string | n
   } else {
     id = (await prisma.affidavit.create({ data: { ...fields, jobId, createdById: user.id } })).id;
   }
-  redirect(fd.get("intent") === "share" ? `/jobs/${jobId}/affidavits/${id}/share` : `/jobs/${jobId}/affidavits/${id}?saved=1`);
+  redirect(`/jobs/${jobId}/affidavits/${id}?saved=1`);
 }
 
 export async function deleteAffidavitAction(id: string) {
@@ -498,60 +409,34 @@ export async function deleteAffidavitAction(id: string) {
   redirect(`/jobs/${a.jobId}`);
 }
 
-export async function emailAffidavitAction(id: string, fd: FormData) {
-  const user = await requirePerm("emailSharing");
-  const a = await prisma.affidavit.findUniqueOrThrow({ where: { id }, include: { job: true } });
-  if (!canAccessJob(user, a.job)) throw new Error("Not allowed");
-  const to = chosenRecipients(fd);
-  const title = a.kind === "SERVICE" ? "Affidavit of Service" : "Affidavit of Non-Service";
-  const message = str(fd, "message");
-  await sendMail(
-    to,
-    `${title}: ${a.job.recipientName} – ${jobNo(a.job.number)}`,
-    `${message ? `${message}\n\n` : ""}Please find attached the ${title.toLowerCase()} for ${a.job.recipientName}` +
-      `${a.job.clientReference ? ` (your job no. ${a.job.clientReference})` : ""}${a.job.courtFileNumber ? `, court case ${a.job.courtFileNumber}` : ""}.\n`,
-    [{ filename: `${title.replace(/ /g, "-")}-${jobNo(a.job.number)}.pdf`, content: Buffer.from(a.pdf), contentType: "application/pdf" }]
-  );
-  redirect(`/jobs/${a.jobId}/affidavits/${id}?emailed=${to.length}`);
-}
-
 /* ---------- client portal (staff side) ---------- */
-
-async function sendPortalInvite(portalUserId: string) {
-  const token = randomBytes(24).toString("base64url");
-  const u = await prisma.portalUser.update({
-    where: { id: portalUserId },
-    data: { inviteToken: token, inviteExpires: new Date(Date.now() + INVITE_DAYS * 86400000) },
-    include: { client: true },
-  });
-  const settings = await getSettings();
-  await sendMail(
-    [u.email],
-    `Your client portal access – ${settings.companyName}`,
-    `Hi ${u.name},\n\n${settings.companyName} has set up client portal access for ${u.client.name}.\n` +
-      `In the portal you can follow your service jobs, see each attempt as it's logged, and download affidavits.\n\n` +
-      `Set your password here (link valid for ${INVITE_DAYS} days):\n${appUrl()}/portal/invite/${token}\n\n` +
-      `After that, sign in any time at ${appUrl()}/portal\n`
-  );
-}
 
 export async function addPortalUserAction(clientId: string, _: unknown, fd: FormData) {
   await requirePerm("manageClients");
   const name = str(fd, "name");
-  const email = str(fd, "email")?.toLowerCase();
-  if (!name || !email || !EMAIL_RE.test(email)) return { error: "Enter a name and a valid email." };
-  if (await prisma.portalUser.findUnique({ where: { email } })) return { error: "That email already has portal access." };
-  const u = await prisma.portalUser.create({ data: { clientId, name, email } });
-  await sendPortalInvite(u.id);
+  if (!name) return { error: "Enter their name." };
+  const pinError = checkPin(str(fd, "pin"));
+  if (pinError) return { error: pinError };
+  const loginName = normalizeLoginName(name);
+  if (await prisma.portalUser.findUnique({ where: { loginName } }))
+    return { error: `Someone already signs in as "${name}". Add a middle initial or their firm to make it unique.` };
+  await prisma.portalUser.create({ data: { clientId, name: name.replace(/\s+/g, " "), loginName, passwordHash: await hashPassword(str(fd, "pin")!) } });
   revalidatePath(`/clients/${clientId}`);
-  return { ok: `Portal access created for ${name}.` };
+  return { ok: `${name} can now sign in with their name and PIN.` };
 }
 
-export async function resendPortalInviteAction(id: string) {
+/** Staff set a new PIN (also unlocks a login that was locked after wrong PINs). */
+export async function setPortalPinAction(id: string, _: unknown, fd: FormData) {
   await requirePerm("manageClients");
-  await sendPortalInvite(id);
-  const u = await prisma.portalUser.findUniqueOrThrow({ where: { id } });
+  const pinError = checkPin(str(fd, "pin"));
+  if (pinError) return { error: pinError };
+  const u = await prisma.portalUser.update({
+    where: { id },
+    data: { passwordHash: await hashPassword(str(fd, "pin")!), failedAttempts: 0, lockedUntil: null },
+  });
+  await prisma.portalSession.deleteMany({ where: { portalUserId: id } });
   revalidatePath(`/clients/${u.clientId}`);
+  return { ok: "New PIN saved." };
 }
 
 export async function togglePortalUserAction(id: string) {
@@ -574,4 +459,17 @@ export async function toggleAffidavitClientAction(id: string) {
   await prisma.affidavit.update({ where: { id }, data: { clientVisible: !a.clientVisible } });
   revalidatePath(`/jobs/${a.jobId}/affidavits/${id}`);
   revalidatePath(`/jobs/${a.jobId}`);
+}
+
+/* ---------- my account ---------- */
+
+export async function changePasswordAction(_: unknown, fd: FormData) {
+  const me = await requireUser();
+  const current = str(fd, "current") ?? "";
+  const next = str(fd, "password") ?? "";
+  if (!me.passwordHash || !(await verifyPassword(current, me.passwordHash))) return { error: "Your current password is wrong." };
+  if (next.length < 8) return { error: "New password must be at least 8 characters." };
+  if (next !== str(fd, "confirm")) return { error: "New passwords don't match." };
+  await prisma.user.update({ where: { id: me.id }, data: { passwordHash: await hashPassword(next) } });
+  return { ok: "Password changed." };
 }

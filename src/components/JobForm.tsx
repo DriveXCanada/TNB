@@ -68,10 +68,6 @@ export default function JobForm({
             {client.address && <div className="whitespace-pre-wrap text-slate-600">{client.address}</div>}
           </div>
         )}
-        <div className="sm:col-span-2">
-          <label className="label">Extra client emails (offered as options when sharing attempts)</label>
-          <input className="input" name="notifyEmails" defaultValue={v("notifyEmails")} placeholder="clerk@lawfirm.ca" />
-        </div>
       </section>
 
       <section className="card grid gap-4 sm:grid-cols-2">

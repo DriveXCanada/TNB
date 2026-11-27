@@ -25,12 +25,9 @@ export default async function EditAttemptPage({ params }: { params: Promise<{ id
         <AttemptForm
           action={updateAttemptAction.bind(null, a.id)}
           addresses={jobAddresses(a.job)}
-          recipients={data.recipients}
-          mailOn={data.mailOn}
           servers={data.servers}
           currentUserId={user.id}
           canChooseServer={data.canChooseServer}
-          canEmail={data.canEmail}
           sharingOn={a.job.trackingEnabled}
           returnTo={`/jobs/${id}`}
           defaults={{

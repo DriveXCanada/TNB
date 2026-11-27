@@ -7,7 +7,7 @@ import { fmtDateTime, jobNo } from "@/lib/labels";
 import AffidavitViewer from "@/components/AffidavitViewer";
 import ConfirmButton from "@/components/ConfirmButton";
 
-export default async function AffidavitPage({ params, searchParams }: { params: Promise<{ id: string; afid: string }>; searchParams: Promise<{ saved?: string; emailed?: string }> }) {
+export default async function AffidavitPage({ params, searchParams }: { params: Promise<{ id: string; afid: string }>; searchParams: Promise<{ saved?: string }> }) {
   const user = await requireUser();
   const { id, afid } = await params;
   const sp = await searchParams;
@@ -20,7 +20,6 @@ export default async function AffidavitPage({ params, searchParams }: { params: 
   return (
     <div className="space-y-4">
       {sp.saved && <div className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800">✓ Affidavit saved to the job and downloaded to this computer.</div>}
-      {sp.emailed && <div className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800">✓ Emailed to {sp.emailed} recipient(s).</div>}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Link href={`/jobs/${id}`} className="text-sm font-semibold text-navy-600">← {jobNo(a.job.number)} · {a.job.recipientName}</Link>
@@ -36,7 +35,6 @@ export default async function AffidavitPage({ params, searchParams }: { params: 
             </form>
           )}
           {can(user, "createAffidavits") && <Link className="btn-secondary" href={`/jobs/${id}/affidavits/${afid}/edit`}>Edit</Link>}
-          {can(user, "emailSharing") && <Link className="btn-secondary" href={`/jobs/${id}/affidavits/${afid}/share`}>Email</Link>}
           {can(user, "deleteAffidavits") && (
             <form action={deleteAffidavitAction.bind(null, afid)}>
               <ConfirmButton className="btn-secondary text-rose-600" message="Delete this affidavit?">Delete</ConfirmButton>

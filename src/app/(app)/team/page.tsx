@@ -29,7 +29,7 @@ export default async function TeamPage() {
                   <Link className="font-medium font-semibold text-navy-600" href={`/team/${u.id}`}>{u.name}</Link>
                   {u.defaultServer && <span className="badge ml-2 bg-gold-100 text-gold-800">Default server</span>}
                   <div className="text-xs text-slate-500">
-                    {!u.active ? "Inactive" : u.role === "CONTACT" ? "Contact – no sign-in" : !u.passwordHash ? "Invitation pending" : ""}
+                    {!u.active ? "Inactive" : u.role === "CONTACT" ? "Contact – no sign-in" : !u.passwordHash ? "No password set" : ""}
                   </div>
                 </td>
                 <td className="td">{ROLE_INFO[u.role].label}</td>

@@ -11,13 +11,11 @@ export default function AffidavitEditor({
   statements,
   action,
   cancelHref,
-  canShare = true,
 }: {
   initial: AffidavitData;
   statements: Record<AffidavitTemplate, string>;
   action: (fd: FormData) => Promise<void>;
   cancelHref: string;
-  canShare?: boolean;
 }) {
   const [d, setD] = useState(initial);
   const set = <K extends keyof AffidavitData>(k: K, v: AffidavitData[K]) => setD((x) => ({ ...x, [k]: v }));
@@ -52,8 +50,7 @@ export default function AffidavitEditor({
           <option value="NON_SERVICE">Affidavit of Non-Service</option>
         </select>
         <div className="ml-auto flex gap-2">
-          {canShare && <button name="intent" value="share" className="btn-secondary">Save &amp; Share</button>}
-          <button name="intent" value="save" className="btn-accent px-6">Save</button>
+          <button className="btn-accent px-6">Save</button>
         </div>
       </div>
 

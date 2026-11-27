@@ -199,20 +199,21 @@ model Affidavit {
   updatedAt   DateTime @updatedAt
 }
 
-/** Client portal logins. Kept separate from employee Users so a client can never reach staff pages. */
+/** Client portal logins. Kept separate from employee Users so a client can never reach staff pages.
+ *  Clients sign in with their name and a PIN that staff set and the client can change. */
 model PortalUser {
-  id            String          @id @default(cuid())
-  clientId      String
-  client        Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  name          String
-  email         String          @unique
-  passwordHash  String?
-  inviteToken   String?         @unique
-  inviteExpires DateTime?
-  active        Boolean         @default(true)
-  lastLoginAt   DateTime?
-  createdAt     DateTime        @default(now())
-  sessions      PortalSession[]
+  id             String          @id @default(cuid())
+  clientId       String
+  client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name           String
+  loginName      String          @unique
+  passwordHash   String?
+  active         Boolean         @default(true)
+  failedAttempts Int             @default(0)
+  lockedUntil    DateTime?
+  lastLoginAt    DateTime?
+  createdAt      DateTime        @default(now())
+  sessions       PortalSession[]
 }
 
 model PortalSession {
