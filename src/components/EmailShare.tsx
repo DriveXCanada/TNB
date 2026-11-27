@@ -38,7 +38,7 @@ export default function EmailShare({ recipients, mailOn }: { recipients: Recipie
               <div className="label uppercase">{g}</div>
               {shown.map(box)}
               {shown.length < list.length && (
-                <button type="button" className="text-sm text-indigo-700" onClick={() => setShowAll(true)}>Show all ({list.length})</button>
+                <button type="button" className="text-sm font-semibold text-navy-600" onClick={() => setShowAll(true)}>Show all ({list.length})</button>
               )}
             </div>
           );

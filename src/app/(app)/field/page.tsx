@@ -21,7 +21,7 @@ export default async function FieldPage({ searchParams }: { searchParams: Promis
       <div className="flex items-center justify-between">
         <h1 className="h1">{sp.all ? "All open jobs" : "My jobs"}</h1>
         {isStaff(user) && (
-          <Link className="text-sm text-indigo-700" href={sp.all ? "/field" : "/field?all=1"}>
+          <Link className="text-sm font-semibold text-navy-600" href={sp.all ? "/field" : "/field?all=1"}>
             {sp.all ? "Show mine" : "Show all"}
           </Link>
         )}

@@ -8,7 +8,7 @@ export default function InviteForm({ action }: { action: (s: unknown, fd: FormDa
       <div><label className="label">Password (min. 8 characters)</label><input className="input" type="password" name="password" minLength={8} required autoComplete="new-password" /></div>
       <div><label className="label">Confirm password</label><input className="input" type="password" name="confirm" minLength={8} required autoComplete="new-password" /></div>
       {state?.error && <p className="text-sm text-rose-600">{state.error}</p>}
-      <button className="btn-primary w-full" disabled={pending}>Set password &amp; sign in</button>
+      <button className="btn-accent w-full py-3 text-base" disabled={pending}>Set password &amp; sign in</button>
     </form>
   );
 }

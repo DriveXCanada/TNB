@@ -30,7 +30,7 @@ export default function JobSummary({ job, attempts }: { job: Job & { client: Cli
           <div key={a} className="mt-2 rounded-lg border border-slate-200 p-2">
             <div className="flex justify-between text-xs font-semibold text-slate-500 uppercase">
               <span>{i === 0 ? "⌂ Home" : "Alternate"}</span>
-              <a className="normal-case text-indigo-700" target="_blank" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(a)}`}>Navigate</a>
+              <a className="normal-case font-semibold text-navy-600" target="_blank" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(a)}`}>Navigate</a>
             </div>
             {a}
           </div>

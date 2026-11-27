@@ -17,6 +17,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <section className="card grid gap-4 sm:grid-cols-2">
           <h2 className="h2 sm:col-span-2">Company</h2>
           <div className="sm:col-span-2"><label className="label">Company name</label><input className="input" name="companyName" defaultValue={s.companyName} /></div>
+          <div className="sm:col-span-2"><label className="label">Tagline</label><input className="input" name="tagline" defaultValue={s.tagline} /></div>
           <div><label className="label">Phone</label><input className="input" name="companyPhone" defaultValue={s.companyPhone} /></div>
           <div><label className="label">Email</label><input className="input" name="companyEmail" defaultValue={s.companyEmail} /></div>
           <div className="sm:col-span-2"><label className="label">Address</label><input className="input" name="companyAddress" defaultValue={s.companyAddress} /></div>

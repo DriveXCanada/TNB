@@ -50,7 +50,7 @@ export default function JobForm({
         <div>
           <div className="flex items-baseline justify-between">
             <label className="label">Client</label>
-            <Link href="/clients/new" target="_blank" className="text-xs text-indigo-700">+ New client</Link>
+            <Link href="/clients/new" target="_blank" className="text-xs font-semibold text-navy-600">+ New client</Link>
           </div>
           <select className="input" name="clientId" value={clientId} onChange={(e) => pickClient(e.target.value)}>
             <option value="">— Select client —</option>
@@ -136,7 +136,7 @@ export default function JobForm({
       </section>
 
       <div className="flex justify-end gap-2">
-        <button className="btn-primary">{job ? "Save changes" : "Create job"}</button>
+        <button className="btn-accent px-8 py-3 text-base">{job ? "Save changes" : "Create job"}</button>
       </div>
     </form>
   );

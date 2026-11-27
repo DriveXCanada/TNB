@@ -42,7 +42,7 @@ export default function AffidavitEditor({
   return (
     <form action={action}>
       <input type="hidden" name="data" value={JSON.stringify(d)} />
-      <div className="sticky top-[49px] z-10 -mx-4 mb-4 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur">
+      <div className="sticky top-14 z-10 lg:top-0 -mx-4 mb-4 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur">
         <Link href={cancelHref} className="btn-secondary">✕ Cancel</Link>
         <select className="input w-auto" value={d.template} onChange={(e) => switchTemplate(e.target.value as AffidavitTemplate)}>
           {AFFIDAVIT_TEMPLATES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -53,7 +53,7 @@ export default function AffidavitEditor({
         </select>
         <div className="ml-auto flex gap-2">
           {canShare && <button name="intent" value="share" className="btn-secondary">Save &amp; Share</button>}
-          <button name="intent" value="save" className="btn-primary">Save</button>
+          <button name="intent" value="save" className="btn-accent px-6">Save</button>
         </div>
       </div>
 

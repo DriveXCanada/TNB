@@ -25,7 +25,7 @@ function Section({ title, action, children }: { title: string; action?: React.Re
   return (
     <section className="border-t border-slate-200 py-4 first:border-t-0">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="font-semibold">{title}</h2>
+        <h2 className="flex items-center gap-2 font-bold text-navy-900"><span className="h-4 w-1 rounded bg-gold-500" />{title}</h2>
         {action}
       </div>
       {children}
@@ -84,9 +84,9 @@ export default async function JobPage({ params, searchParams }: { params: Promis
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Job</div>
+          <div className="eyebrow">Job</div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-3xl font-bold">{jobNo(job.number)}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-navy-900">{jobNo(job.number)}</h1>
             {job.courtFileNumber && <span className="badge bg-slate-100 text-slate-700">{job.courtFileNumber}</span>}
             <span className="badge bg-slate-100 text-slate-700">{n} Attempt{n === 1 ? "" : "s"}</span>
             {(job.status === "SERVED" || job.status === "NON_SERVICE" || job.status === "CANCELLED") && <StatusBadge status={job.status} />}
@@ -104,10 +104,10 @@ export default async function JobPage({ params, searchParams }: { params: Promis
       {/* Client / Server / Status */}
       <div className="card grid gap-4 md:grid-cols-3">
         <div>
-          <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Client</div>
+          <div className="eyebrow">Client</div>
           {job.client ? (
             <>
-              {can(user, "manageClients") ? <Link href={`/clients/${job.client.id}`} className="font-semibold underline decoration-slate-300">{job.client.name}</Link> : <div className="font-semibold">{job.client.name}</div>}
+              {can(user, "manageClients") ? <Link href={`/clients/${job.client.id}`} className="link">{job.client.name}</Link> : <div className="font-semibold">{job.client.name}</div>}
               {job.client.contactName && <div className="text-sm">{job.client.contactName}</div>}
               {seeClient && job.client.email && <div className="text-sm text-slate-600">{job.client.email}</div>}
               {seeClient && job.client.phone && <div className="text-sm text-slate-600">{job.client.phone}</div>}
@@ -116,7 +116,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
           {job.clientReference && <div className="mt-1 text-sm">Job no. <b>{job.clientReference}</b></div>}
         </div>
         <div>
-          <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Server</div>
+          <div className="eyebrow">Server</div>
           <div className="font-semibold">{settings.companyName}</div>
           {job.server ? (
             <>
@@ -158,7 +158,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             action={
               <div className="flex gap-2">
                 <Link className="btn-secondary py-1.5" href={`/jobs/${job.id}/sheet`} target="_blank">Field Sheet</Link>
-                {canAttempt && <Link className="btn-primary py-1.5" href={`/field/${job.id}/attempt`}>New Attempt</Link>}
+                {canAttempt && <Link className="btn-accent py-1.5" href={`/field/${job.id}/attempt`}>New Attempt</Link>}
               </div>
             }
           >
@@ -183,7 +183,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                         </div>
                         <div className="text-sm">{a.address}</div>
                         <div className="text-right text-sm">
-                          {canShare && <Link className="text-indigo-700 underline" href={`/jobs/${job.id}/attempts/${a.id}/share`}>Share</Link>}
+                          {canShare && <Link className="link" href={`/jobs/${job.id}/attempts/${a.id}/share`}>Share</Link>}
                           <div className="text-slate-600">{a.server?.name ?? "—"}</div>
                         </div>
                       </summary>
@@ -193,7 +193,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                         {a.identifiedBy && <div>Identified by: {a.identifiedBy}</div>}
                         {a.notes && <div className="whitespace-pre-wrap">{a.notes}</div>}
                         {a.latitude != null && a.longitude != null && (
-                          <a className="text-indigo-700 underline" target="_blank" href={`https://www.google.com/maps?q=${a.latitude},${a.longitude}`}>
+                          <a className="link" target="_blank" href={`https://www.google.com/maps?q=${a.latitude},${a.longitude}`}>
                             GPS {a.latitude.toFixed(5)}, {a.longitude.toFixed(5)}{a.gpsAccuracy ? ` (±${Math.round(a.gpsAccuracy)} m)` : ""}
                           </a>
                         )}
@@ -212,7 +212,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
                         )}
                         <div className="flex flex-wrap gap-3 pt-1 text-xs">
                           <span className={a.shareWithClient ? "text-emerald-700" : "text-slate-500"}>{a.shareWithClient ? "Visible on client tracking page" : "Hidden from client tracking page"}</span>
-                          {staff && <form action={toggleAttemptShareAction.bind(null, a.id, job.id)}><button className="text-indigo-700">{a.shareWithClient ? "Hide" : "Show"}</button></form>}
+                          {staff && <form action={toggleAttemptShareAction.bind(null, a.id, job.id)}><button className="font-semibold text-navy-600">{a.shareWithClient ? "Hide" : "Show"}</button></form>}
                           {can(user, "deleteAttempts") && <form action={deleteAttemptAction.bind(null, a.id, job.id)}><ConfirmButton className="text-rose-600" message="Delete this attempt?">Delete</ConfirmButton></form>}
                         </div>
                       </div>
@@ -223,20 +223,20 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             </ul>
           </Section>
 
-          <Section title="Affidavits" action={canAffidavit && <Link className="btn-primary py-1.5" href={`/jobs/${job.id}/affidavits/new`}>New Affidavit</Link>}>
+          <Section title="Affidavits" action={canAffidavit && <Link className="btn-accent py-1.5" href={`/jobs/${job.id}/affidavits/new`}>New Affidavit</Link>}>
             {job.affidavits.length === 0 ? (
               <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-600">No Affidavits</p>
             ) : (
               <ul className="space-y-1 text-sm">
                 {job.affidavits.map((af) => (
                   <li key={af.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-50 p-2">
-                    <Link className="font-medium text-indigo-700" href={`/jobs/${job.id}/affidavits/${af.id}`}>
+                    <Link className="font-medium font-semibold text-navy-600" href={`/jobs/${job.id}/affidavits/${af.id}`}>
                       {af.kind === "SERVICE" ? "Affidavit of Service" : "Affidavit of Non-Service"}
                     </Link>
                     <span className="flex items-center gap-3 text-xs text-slate-500">
                       {fmtDateTime(af.updatedAt)}{af.createdBy && ` · ${af.createdBy.name}`}
-                      <a className="text-indigo-700 underline" href={`/api/affidavits/${af.id}?download=1`}>Download</a>
-                      {canAffidavit && <Link className="text-indigo-700 underline" href={`/jobs/${job.id}/affidavits/${af.id}/edit`}>Edit</Link>}
+                      <a className="link" href={`/api/affidavits/${af.id}?download=1`}>Download</a>
+                      {canAffidavit && <Link className="link" href={`/jobs/${job.id}/affidavits/${af.id}/edit`}>Edit</Link>}
                     </span>
                   </li>
                 ))}
@@ -270,27 +270,27 @@ export default async function JobPage({ params, searchParams }: { params: Promis
             </dl>
             {addrs.map((addr, i) => (
               <div key={addr} className="mt-2 rounded-lg border border-slate-200 p-3 text-sm">
-                <div className="mb-1 flex items-center justify-between text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                <div className="mb-1 flex items-center justify-between eyebrow">
                   <span>{i === 0 ? "⌂ Service address" : "Alternate"}</span>
-                  <a className="normal-case text-indigo-700" target="_blank" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`}>Navigate</a>
+                  <a className="normal-case font-semibold text-navy-600" target="_blank" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`}>Navigate</a>
                 </div>
                 {addr}
               </div>
             ))}
           </Section>
-          <Section title="Service Instructions" action={staff && <Link className="text-sm text-indigo-700" href={`/jobs/${job.id}/edit`}>Edit</Link>}>
+          <Section title="Service Instructions" action={staff && <Link className="text-sm font-semibold text-navy-600" href={`/jobs/${job.id}/edit`}>Edit</Link>}>
             <p className="text-sm whitespace-pre-wrap">{job.instructions || <span className="muted">None</span>}</p>
           </Section>
-          <Section title="Docs to Be Served" action={staff && <Link className="text-sm text-indigo-700" href={`/jobs/${job.id}/edit`}>Edit</Link>}>
+          <Section title="Docs to Be Served" action={staff && <Link className="text-sm font-semibold text-navy-600" href={`/jobs/${job.id}/edit`}>Edit</Link>}>
             <p className="text-sm whitespace-pre-wrap">{job.documentsServed || <span className="muted">None listed</span>}</p>
             {job.files.map((f) => (
               <div key={f.id} className="mt-1 flex items-center justify-between text-sm">
-                <a className="text-indigo-700 underline" href={`/api/files/${f.id}`} target="_blank">📄 {f.filename}</a>
+                <a className="link" href={`/api/files/${f.id}`} target="_blank">📄 {f.filename}</a>
                 {staff && <form action={deleteFileAction.bind(null, f.id, job.id)}><ConfirmButton className="text-xs text-rose-600" message="Remove this document?">Remove</ConfirmButton></form>}
               </div>
             ))}
           </Section>
-          <Section title="Court Case" action={staff && <Link className="text-sm text-indigo-700" href={`/jobs/${job.id}/edit`}>Edit</Link>}>
+          <Section title="Court Case" action={staff && <Link className="text-sm font-semibold text-navy-600" href={`/jobs/${job.id}/edit`}>Edit</Link>}>
             <dl>
               <Field label="Case">{job.courtFileNumber}</Field>
               <Field label="Plaintiff">{job.plaintiff}</Field>

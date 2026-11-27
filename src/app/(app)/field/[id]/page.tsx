@@ -29,7 +29,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: P
         <div className="mt-1 flex gap-2"><StatusBadge status={job.status} attempts={job.attempts.length} /><PriorityBadge priority={job.priority} /></div>
       </div>
 
-      <Link href={`/field/${job.id}/attempt?from=field`} className="btn-primary w-full py-4 text-lg">+ Log attempt</Link>
+      <Link href={`/field/${job.id}/attempt?from=field`} className="btn-accent w-full py-4 text-lg">+ Log attempt</Link>
 
       <section className="card space-y-3">
         {addresses.map((addr, i) => (
@@ -49,7 +49,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: P
         {job.instructions && <p className="rounded-md bg-amber-50 p-2 text-sm whitespace-pre-wrap"><b>Instructions:</b> {job.instructions}</p>}
         {job.documentsServed && <p className="text-sm"><b>Documents:</b> {job.documentsServed}</p>}
         {job.files.map((f) => (
-          <a key={f.id} className="block text-sm text-indigo-700 underline" href={`/api/files/${f.id}`} target="_blank">📄 {f.filename}</a>
+          <a key={f.id} className="block text-sm link" href={`/api/files/${f.id}`} target="_blank">📄 {f.filename}</a>
         ))}
       </section>
 

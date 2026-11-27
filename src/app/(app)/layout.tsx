@@ -9,8 +9,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const settings = await getSettings();
   return (
     <>
-      <Nav user={user} company={settings.companyName} />
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <Nav user={user} company={settings.companyName} tagline={settings.tagline} />
+      <div className="pb-20 lg:pb-0 lg:pl-64 print:p-0">
+        <main className="mx-auto max-w-6xl px-4 py-6 lg:px-8 lg:py-8">{children}</main>
+      </div>
     </>
   );
 }

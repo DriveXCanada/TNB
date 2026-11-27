@@ -17,9 +17,9 @@ export default async function EditAttemptPage({ params }: { params: Promise<{ id
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Job</div>
-        <h1 className="text-2xl font-bold">{jobNo(a.job.number)}</h1>
-        <div className="mt-1 text-sm font-semibold tracking-wide text-slate-500 uppercase">Edit attempt · {a.job.recipientName}</div>
+        <div className="eyebrow">Job</div>
+        <h1 className="text-2xl font-extrabold tracking-tight text-navy-900">{jobNo(a.job.number)}</h1>
+        <div className="mt-1 eyebrow text-sm">Edit attempt · {a.job.recipientName}</div>
       </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <AttemptForm

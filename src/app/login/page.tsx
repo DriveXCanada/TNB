@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { can, getCurrentUser } from "@/lib/auth";
+import { getSettings } from "@/lib/settings";
+import AuthShell from "@/components/AuthShell";
 import LoginForm from "./LoginForm";
 
 export const dynamic = "force-dynamic";
@@ -9,13 +11,12 @@ export default async function LoginPage() {
   if ((await prisma.user.count()) === 0) redirect("/setup");
   const user = await getCurrentUser();
   if (user) redirect(can(user, "viewDashboard") ? "/" : "/jobs");
+  const s = await getSettings();
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="card w-full max-w-sm">
-        <h1 className="h1 mb-1">Sign in</h1>
-        <p className="muted mb-6">Process serving management</p>
-        <LoginForm />
-      </div>
-    </main>
+    <AuthShell company={s.companyName} tagline={s.tagline}>
+      <div className="eyebrow mb-1">Team sign-in</div>
+      <h2 className="h1 mb-6">Welcome back</h2>
+      <LoginForm />
+    </AuthShell>
   );
 }

@@ -280,7 +280,7 @@ export default function AttemptForm({
                 Record my current location{" "}
                 {gps ? <span className="muted">({gps.lat.toFixed(5)}, {gps.lng.toFixed(5)} ±{Math.round(gps.acc)} m)</span> : <span className="muted">({gpsMsg})</span>}
               </span>
-              <button type="button" className="text-indigo-700" onClick={locate}>Refresh</button>
+              <button type="button" className="font-semibold text-navy-600" onClick={locate}>Refresh</button>
             </label>
             <p className="mt-1 text-xs text-slate-500">Untick this if you&apos;re logging the attempt later, away from the address.</p>
           </div>
@@ -323,8 +323,8 @@ export default function AttemptForm({
       </section>
 
       {error && <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-      <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border">
-        <button className="btn-primary flex-1 py-3 text-base sm:flex-none sm:px-8" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
+      <div className="sticky-actions z-10 -mx-4 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border">
+        <button className="btn-accent flex-1 py-3 text-base sm:flex-none sm:px-10" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
         <Link href={returnTo} className="btn-secondary py-3">Cancel</Link>
       </div>
     </form>

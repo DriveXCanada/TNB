@@ -15,19 +15,19 @@ export default async function TeamPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="h1">Employees</h1>
-        <Link href="/team/new" className="btn-primary">+ New employee</Link>
+        <Link href="/team/new" className="btn-accent">+ New employee</Link>
       </div>
       <div className="card overflow-x-auto p-0 sm:p-0">
         <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
+          <thead className="bg-navy-800">
             <tr><th className="th">Name</th><th className="th">Permissions</th><th className="th hidden md:table-cell">Email / phone</th><th className="th hidden sm:table-cell">License</th><th className="th">Open jobs</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {users.map((u) => (
               <tr key={u.id} className={u.active ? "" : "opacity-50"}>
                 <td className="td">
-                  <Link className="font-medium text-indigo-700" href={`/team/${u.id}`}>{u.name}</Link>
-                  {u.defaultServer && <span className="badge ml-2 bg-indigo-50 text-indigo-700">Default server</span>}
+                  <Link className="font-medium font-semibold text-navy-600" href={`/team/${u.id}`}>{u.name}</Link>
+                  {u.defaultServer && <span className="badge ml-2 bg-gold-100 text-gold-800">Default server</span>}
                   <div className="text-xs text-slate-500">
                     {!u.active ? "Inactive" : u.role === "CONTACT" ? "Contact – no sign-in" : !u.passwordHash ? "Invitation pending" : ""}
                   </div>
@@ -42,7 +42,7 @@ export default async function TeamPage() {
                     </div>
                   )}
                 </td>
-                <td className="td"><Link className="text-indigo-700" href={`/jobs?status=open&server=${u.id}`}>{u._count.jobs}</Link></td>
+                <td className="td"><Link className="font-semibold text-navy-600" href={`/jobs?status=open&server=${u.id}`}>{u._count.jobs}</Link></td>
               </tr>
             ))}
           </tbody>

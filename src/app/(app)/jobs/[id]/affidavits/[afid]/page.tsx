@@ -23,7 +23,7 @@ export default async function AffidavitPage({ params, searchParams }: { params: 
       {sp.emailed && <div className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800">✓ Emailed to {sp.emailed} recipient(s).</div>}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link href={`/jobs/${id}`} className="text-sm text-indigo-700">← {jobNo(a.job.number)} · {a.job.recipientName}</Link>
+          <Link href={`/jobs/${id}`} className="text-sm font-semibold text-navy-600">← {jobNo(a.job.number)} · {a.job.recipientName}</Link>
           <h1 className="h1">{title}</h1>
           <div className="muted">Saved {fmtDateTime(a.updatedAt)}{a.createdBy && ` · created by ${a.createdBy.name}`}</div>
         </div>

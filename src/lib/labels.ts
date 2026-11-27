@@ -9,11 +9,11 @@ export const STATUS_LABEL: Record<JobStatus, string> = {
 };
 
 export const STATUS_COLOR: Record<JobStatus, string> = {
-  PENDING: "bg-slate-100 text-slate-700",
-  IN_PROGRESS: "bg-amber-100 text-amber-800",
-  SERVED: "bg-emerald-100 text-emerald-800",
-  NON_SERVICE: "bg-rose-100 text-rose-800",
-  CANCELLED: "bg-zinc-200 text-zinc-600",
+  PENDING: "bg-slate-200 text-slate-800",
+  IN_PROGRESS: "bg-gold-500 text-navy-950",
+  SERVED: "bg-emerald-600 text-white",
+  NON_SERVICE: "bg-rose-600 text-white",
+  CANCELLED: "bg-zinc-400 text-white",
 };
 
 export const PRIORITY_LABEL: Record<Priority, string> = {

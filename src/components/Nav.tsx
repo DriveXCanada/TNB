@@ -1,32 +1,51 @@
-import Link from "next/link";
 import type { User } from "@prisma/client";
 import { logoutAction } from "@/app/actions";
 import { can } from "@/lib/auth";
+import NavLinks, { type NavItem } from "./NavLinks";
 
-export default function Nav({ user, company }: { user: User; company: string }) {
-  const links = [
-    ...(can(user, "viewDashboard") ? [["/", "Dashboard"]] : []),
-    ["/jobs", can(user, "viewAllJobs") ? "Jobs" : "My jobs"],
-    ["/field", "Field"],
-    ...(can(user, "manageClients") ? [["/clients", "Clients"]] : []),
-    ...(can(user, "manageEmployees") ? [["/team", "Employees"]] : []),
-    ...(can(user, "updateSettings") ? [["/settings", "Settings"]] : []),
+/** App shell: navy sidebar on desktop; top bar + bottom tab bar on phones. */
+export default function Nav({ user, company, tagline }: { user: User; company: string; tagline: string }) {
+  const items: NavItem[] = [
+    ...(can(user, "viewDashboard") ? [{ href: "/", label: "Dashboard", icon: "dashboard" as const }] : []),
+    { href: "/jobs", label: can(user, "viewAllJobs") ? "Jobs" : "My Jobs", icon: "jobs" },
+    { href: "/field", label: "Field", icon: "field" },
+    ...(can(user, "manageClients") ? [{ href: "/clients", label: "Clients", icon: "clients" as const }] : []),
+    ...(can(user, "manageEmployees") ? [{ href: "/team", label: "Employees", icon: "team" as const }] : []),
+    ...(can(user, "updateSettings") ? [{ href: "/settings", label: "Settings", icon: "settings" as const }] : []),
   ];
+  const signOut = (
+    <form action={logoutAction}>
+      <button className="text-sm font-semibold text-navy-200 hover:text-white" title={user.email}>Sign out</button>
+    </form>
+  );
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur print:hidden">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2">
-        <Link href={can(user, "viewDashboard") ? "/" : "/jobs"} className="mr-2 hidden truncate font-bold text-indigo-700 sm:block">{company}</Link>
-        <nav className="-mx-1 flex flex-1 gap-1 overflow-x-auto">
-          {links.map(([href, label]) => (
-            <Link key={href} href={href} className="rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap text-slate-700 hover:bg-slate-100">
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <form action={logoutAction}>
-          <button className="text-sm whitespace-nowrap text-slate-500 hover:text-slate-800" title={user.email}>Sign out</button>
-        </form>
-      </div>
-    </header>
+    <>
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-navy-800 text-white lg:flex print:hidden">
+        <div className="border-b border-navy-700 px-5 py-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/mark-light.png" alt="" className="mb-3 h-12 w-auto" />
+          <div className="text-lg leading-tight font-extrabold tracking-wide uppercase">{company}</div>
+          {tagline && <div className="mt-1 text-[11px] font-semibold tracking-[.12em] text-gold-400 uppercase">{tagline}</div>}
+        </div>
+        <NavLinks items={items} variant="sidebar" />
+        <div className="mt-auto border-t border-navy-700 px-5 py-4">
+          <div className="truncate text-sm font-bold">{user.name}</div>
+          <div className="mb-2 truncate text-xs text-navy-300">{user.email}</div>
+          {signOut}
+        </div>
+      </aside>
+
+      {/* Phone top bar */}
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 bg-navy-800 px-4 text-white shadow-md lg:hidden print:hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/mark-light.png" alt="" className="h-7 w-auto" />
+        <div className="flex-1 truncate text-sm font-extrabold tracking-wide uppercase">{company}</div>
+        {signOut}
+      </header>
+
+      {/* Phone bottom tabs */}
+      <NavLinks items={items} variant="tabs" />
+    </>
   );
 }

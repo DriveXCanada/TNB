@@ -15,7 +15,7 @@ export default function LoginForm() {
         <input className="input" id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
       {state?.error && <p className="text-sm text-rose-600">{state.error}</p>}
-      <button className="btn-primary w-full" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
+      <button className="btn-accent w-full py-3 text-base" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
     </form>
   );
 }

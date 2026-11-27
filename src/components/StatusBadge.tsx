@@ -9,7 +9,7 @@ export function StatusBadge({ status, attempts }: { status: JobStatus; attempts?
 export function PriorityBadge({ priority }: { priority: Priority }) {
   if (priority === "ROUTINE") return null;
   return (
-    <span className={`badge ${priority === "SAME_DAY" ? "bg-rose-600 text-white" : "bg-orange-100 text-orange-800"}`}>
+    <span className={`badge ${priority === "SAME_DAY" ? "bg-rose-600 text-white" : "bg-orange-500 text-white"}`}>
       {PRIORITY_LABEL[priority]}
     </span>
   );

@@ -1,7 +1,8 @@
 import { prisma } from "./db";
 
 export const DEFAULT_SETTINGS = {
-  companyName: "My Process Serving Co.",
+  companyName: "Vantage Security Consulting",
+  tagline: "See every angle. Cover every risk.",
   companyPhone: "",
   companyEmail: "",
   companyAddress: "",

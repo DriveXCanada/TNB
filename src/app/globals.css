@@ -1,20 +1,56 @@
 @import "tailwindcss";
 
+/* Vantage Security Consulting brand: navy #132D4C, gold #D4A142 */
+@theme {
+  --font-sans: "Fira Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-navy-50: #eef2f8;
+  --color-navy-100: #d9e1ee;
+  --color-navy-200: #b3c3dc;
+  --color-navy-300: #8099bf;
+  --color-navy-400: #4f6e9c;
+  --color-navy-500: #2f5080;
+  --color-navy-600: #1f3d66;
+  --color-navy-700: #183457;
+  --color-navy-800: #132d4c;
+  --color-navy-900: #0e2239;
+  --color-navy-950: #081626;
+
+  --color-gold-50: #fcf7eb;
+  --color-gold-100: #f7eacb;
+  --color-gold-200: #efd597;
+  --color-gold-300: #e5bd62;
+  --color-gold-400: #dbab4c;
+  --color-gold-500: #d4a142;
+  --color-gold-600: #b8862c;
+  --color-gold-700: #936922;
+  --color-gold-800: #6f4f1b;
+}
+
 :root { color-scheme: light; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
+body { @apply bg-slate-100 font-sans text-navy-950 antialiased; }
 
 @layer components {
   .card { @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5; }
-  .label { @apply mb-1 block text-sm font-medium text-slate-700; }
-  .input { @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none sm:text-sm; }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition disabled:opacity-50; }
-  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition disabled:opacity-50 bg-indigo-600 text-white hover:bg-indigo-700; }
-  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition disabled:opacity-50 border border-slate-300 bg-white text-slate-800 hover:bg-slate-50; }
-  .btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition disabled:opacity-50 bg-rose-600 text-white hover:bg-rose-700; }
-  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold; }
-  .h1 { @apply text-2xl font-bold tracking-tight; }
-  .h2 { @apply text-lg font-semibold; }
+  .label { @apply mb-1 block text-sm font-semibold text-navy-800; }
+  .input { @apply block w-full rounded-lg border-2 border-slate-200 bg-white px-3 py-2 text-base text-navy-950 transition focus:border-gold-500 focus:ring-2 focus:ring-gold-200 focus:outline-none disabled:bg-slate-50 sm:text-sm; }
+
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-navy-800 px-4 py-2 text-sm font-bold tracking-wide text-white shadow-sm transition hover:bg-navy-900 active:scale-[.98] disabled:opacity-50; }
+  .btn-accent { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-bold tracking-wide text-navy-950 shadow-sm transition hover:bg-gold-400 active:scale-[.98] disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-lg border-2 border-navy-800 bg-white px-4 py-2 text-sm font-bold text-navy-800 transition hover:bg-navy-50 active:scale-[.98] disabled:opacity-50; }
+  .btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-50; }
+
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide; }
+  .h1 { @apply text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl; }
+  .h2 { @apply text-lg font-bold text-navy-900; }
+  .eyebrow { @apply text-xs font-bold tracking-[.14em] text-gold-700 uppercase; }
   .muted { @apply text-sm text-slate-500; }
-  .th { @apply px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase; }
+  .link { @apply font-semibold text-navy-600 underline decoration-gold-500 decoration-2 underline-offset-2 hover:text-navy-900; }
+  .th { @apply px-3 py-2.5 text-left text-xs font-bold tracking-wider text-white uppercase; }
   .td { @apply px-3 py-3 text-sm; }
+
+  /* Bottom action bars sit above the phone tab bar, and at the very bottom on desktop. */
+  .sticky-actions { @apply sticky bottom-16 lg:bottom-0; }
 }
+
+input[type="checkbox"], input[type="radio"] { accent-color: var(--color-navy-800); }

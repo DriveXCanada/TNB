@@ -1,18 +1,20 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { getSettings } from "@/lib/settings";
+import AuthShell from "@/components/AuthShell";
 import SetupForm from "./SetupForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
   if ((await prisma.user.count()) > 0) redirect("/login");
+  const s = await getSettings();
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="card w-full max-w-md">
-        <h1 className="h1 mb-1">Welcome</h1>
-        <p className="muted mb-6">Create the administrator account to get started.</p>
-        <SetupForm />
-      </div>
-    </main>
+    <AuthShell company={s.companyName} tagline={s.tagline}>
+      <div className="eyebrow mb-1">First-time setup</div>
+      <h2 className="h1 mb-1">Create the Owner account</h2>
+      <p className="muted mb-6">This account has full access, including employees and settings.</p>
+      <SetupForm />
+    </AuthShell>
   );
 }

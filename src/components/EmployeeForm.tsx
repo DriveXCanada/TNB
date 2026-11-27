@@ -188,8 +188,8 @@ export default function EmployeeForm({
                     ))}
                   </div>
                   <div className="flex gap-4 text-sm">
-                    <button type="button" className="text-indigo-700 underline" onClick={() => setShowHelp((x) => !x)}>Permission Descriptions</button>
-                    {role !== "CUSTOM" && !isSelf && <button type="button" className="text-indigo-700 underline" onClick={() => pickRole("CUSTOM")}>Customize This User</button>}
+                    <button type="button" className="link" onClick={() => setShowHelp((x) => !x)}>Permission Descriptions</button>
+                    {role !== "CUSTOM" && !isSelf && <button type="button" className="link" onClick={() => pickRole("CUSTOM")}>Customize This User</button>}
                   </div>
                 </div>
               )}
@@ -214,8 +214,8 @@ export default function EmployeeForm({
       </section>
 
       {state?.error && <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{state.error}</p>}
-      <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border">
-        <button className="btn-primary px-8" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
+      <div className="sticky-actions z-10 -mx-4 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border">
+        <button className="btn-accent px-10 py-3 text-base" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
         <Link href="/team" className="btn-secondary">Cancel</Link>
       </div>
     </form>

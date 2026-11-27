@@ -43,7 +43,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="h1">{staff ? "Jobs" : "My jobs"}</h1>
-        {can(user, "manageJobs") && <Link href="/jobs/new" className="btn-primary">+ New job</Link>}
+        {can(user, "manageJobs") && <Link href="/jobs/new" className="btn-accent">+ New job</Link>}
       </div>
       <form className="card grid gap-3 sm:grid-cols-4">
         <input className="input sm:col-span-2" name="q" placeholder="Search name, plaintiff, defendant, address, job #, case #…" defaultValue={sp.q} />
@@ -62,9 +62,31 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           <button className="btn-secondary">Filter</button>
         </div>
       </form>
-      <div className="card overflow-x-auto p-0 sm:p-0">
+      {/* Phones: one card per job */}
+      <ul className="space-y-3 md:hidden">
+        {jobs.map((j) => (
+          <li key={j.id}>
+            <Link href={`/jobs/${j.id}`} className="card block border-l-4 border-l-navy-800 active:bg-slate-50">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-lg font-bold text-navy-900">{j.recipientName}</div>
+                  <div className="text-sm font-semibold text-navy-600">{jobNo(j.number)}{j.courtFileNumber && ` · ${j.courtFileNumber}`}</div>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1"><StatusBadge status={j.status} attempts={j._count.attempts} /><PriorityBadge priority={j.priority} /></div>
+              </div>
+              <div className="mt-1 text-sm text-slate-600">{j.address}</div>
+              <div className="muted mt-1">
+                {j.dueDate ? <span className={j.dueDate < new Date() && j.status !== "SERVED" ? "font-bold text-rose-600" : ""}>Attempt due {fmtDate(j.dueDate)}</span> : "No due date"}
+                {staff && ` · ${j.server?.name ?? "Unassigned"}`}
+              </div>
+            </Link>
+          </li>
+        ))}
+        {jobs.length === 0 && <li className="card muted">No jobs found.</li>}
+      </ul>
+      <div className="card hidden overflow-x-auto p-0 sm:p-0 md:block">
         <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
+          <thead className="bg-navy-800">
             <tr>
               <th className="th">Job</th><th className="th">Recipient</th><th className="th hidden md:table-cell">Client</th>
               <th className="th hidden md:table-cell">Server</th><th className="th">Due</th><th className="th">Status</th>
@@ -73,9 +95,9 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           <tbody className="divide-y divide-slate-100">
             {jobs.map((j) => (
               <tr key={j.id} className="hover:bg-slate-50">
-                <td className="td whitespace-nowrap"><Link href={`/jobs/${j.id}`} className="font-medium text-indigo-700">{jobNo(j.number)}</Link></td>
+                <td className="td whitespace-nowrap"><Link href={`/jobs/${j.id}`} className="font-medium font-semibold text-navy-600">{jobNo(j.number)}</Link></td>
                 <td className="td">
-                  <Link href={`/jobs/${j.id}`} className="font-medium text-indigo-700">{j.recipientName}</Link>
+                  <Link href={`/jobs/${j.id}`} className="font-medium font-semibold text-navy-600">{j.recipientName}</Link>
                   {j.courtFileNumber && <span className="muted"> · {j.courtFileNumber}</span>}
                   <div className="muted max-w-xs truncate">{j.address}</div>
                 </td>

@@ -18,12 +18,12 @@ export default async function NewAttemptPage({ params, searchParams }: { params:
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Job</div>
+        <div className="eyebrow">Job</div>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-bold">{jobNo(job.number)}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-navy-900">{jobNo(job.number)}</h1>
           {job.courtFileNumber && <span className="badge bg-slate-100 text-slate-700">{job.courtFileNumber}</span>}
         </div>
-        <div className="mt-1 text-sm font-semibold tracking-wide text-slate-500 uppercase">New attempt · {job.recipientName}</div>
+        <div className="mt-1 eyebrow text-sm">New attempt · {job.recipientName}</div>
       </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <AttemptForm

@@ -24,7 +24,7 @@ export default function AttemptCard({ a, children }: { a: AttemptWithExtras; chi
       {a.notes && <p className="mt-1 text-sm whitespace-pre-wrap">{a.notes}</p>}
       <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
         {a.latitude != null && a.longitude != null && (
-          <a className="text-indigo-700 underline" target="_blank" href={`https://www.google.com/maps?q=${a.latitude},${a.longitude}`}>
+          <a className="link" target="_blank" href={`https://www.google.com/maps?q=${a.latitude},${a.longitude}`}>
             GPS {a.latitude.toFixed(5)}, {a.longitude.toFixed(5)}
             {a.gpsAccuracy ? ` (±${Math.round(a.gpsAccuracy)} m)` : ""}
           </a>
